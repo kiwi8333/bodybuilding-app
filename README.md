@@ -43,6 +43,10 @@ Home Screen; Android/Chrome: ⋮ → Install app). It works offline in the gym.
 
 ## Features
 
+- Animated demo for every exercise version (45 in total), timed to that exercise's real tempo, with
+  captions for each phase of the rep
+- Trainer box per exercise: sets, reps, rest, weight, tempo, effort, how it progresses, and why
+- Plan page with a week-at-a-glance calendar, session timeline, and expandable exercise rows
 - Today screen with the exact weights/reps for the next session and time estimate
 - Set logger with weight carry-forward, rest timer (sound + vibration), form cues, and
   "last time" numbers
@@ -66,7 +70,9 @@ Pushing to `main` runs lint + tests + build and deploys to GitHub Pages
 
 Structure:
 
-- `src/data/`: exercise tracks and levels, workouts, cardio stages
+- `src/data/`: exercise tracks and levels, workouts, cardio stages, tempo, coaching
+- `src/demo/`: inverse-kinematics figure rig and per-exercise choreography (tests check that
+  bones keep their length, nothing goes through the floor, and loops are seamless)
 - `src/logic/`: pure, unit-tested rules (progression, cardio, state, history)
 - `src/store/`: localStorage persistence with validation and corrupt-data recovery
 - `src/pages/`, `src/components/`: React UI

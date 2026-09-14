@@ -5,6 +5,8 @@ import { lastPerformance } from '../logic/history.js'
 import { loadLabel, setsText, targetText } from '../lib/describe.js'
 import { formatDate } from '../lib/format.js'
 import { CheckIcon } from './icons.jsx'
+import ExerciseDemo from './ExerciseDemo.jsx'
+import CoachBox from './CoachBox.jsx'
 
 const MAX_VALUE = { weighted: 100, reps: 100, hold: 600 }
 
@@ -16,6 +18,7 @@ export default function ExerciseCard({ index, exercise, equipment, workouts, onS
   const doneCount = exercise.sets.filter((s) => s.done).length
   const anyDone = doneCount > 0
   const [error, setError] = useState(null)
+  const [showDemo, setShowDemo] = useState(false)
   const valueLabel = track.type === 'hold' ? 'Secs' : 'Reps'
 
   function toggle(setIndex) {
@@ -56,7 +59,9 @@ export default function ExerciseCard({ index, exercise, equipment, workouts, onS
           </span>
         </div>
         <h2 id={`ex-${index}`}>{level.name}</h2>
-        <p className="small text-2">Target: {targetText(exercise.trackId, exercise.levelIndex, exercise.target)}</p>
+        <p className="small text-2">
+          Do: <strong>{targetText(exercise.trackId, exercise.levelIndex, exercise.target)}</strong> · rest {track.restSeconds} s
+        </p>
         {isPerSide(track, exercise.levelIndex) && <p className="hint">Do every set on both sides. Log the reps of your weaker side.</p>}
         {exercise.target.note && <p className="banner warn small">{exercise.target.note}</p>}
         {last && (
@@ -67,13 +72,22 @@ export default function ExerciseCard({ index, exercise, equipment, workouts, onS
         )}
       </div>
 
-      <details className="disclosure">
-        <summary>How to do it</summary>
-        <ol className="cues">
-          {level.cues.map((c) => (
-            <li key={c}>{c}</li>
-          ))}
-        </ol>
+      <details className="disclosure" onToggle={(e) => setShowDemo(e.currentTarget.open)}>
+        <summary>{showDemo ? 'Hide demo & coaching' : 'Watch demo & coaching'}</summary>
+        {showDemo && (
+          <div className="stack" style={{ gap: 12 }}>
+            <ExerciseDemo levelId={level.id} name={level.name} />
+            <CoachBox trackId={exercise.trackId} levelIndex={exercise.levelIndex} target={exercise.target} />
+            <div className="stack" style={{ gap: 6 }}>
+              <h3>Form cues</h3>
+              <ol className="cues">
+                {level.cues.map((c) => (
+                  <li key={c}>{c}</li>
+                ))}
+              </ol>
+            </div>
+          </div>
+        )}
       </details>
 
       <div className="set-table">

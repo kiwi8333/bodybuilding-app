@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, Navigate, useParams } from 'react-router-dom'
 import { useStore } from '../store/StoreContext.jsx'
 import { BUILDER_STAGES, EFFORT_SCALE, HARD_SPEED_BONUS_MPH, round1, totalSeconds } from '../data/cardio.js'
+import { CARDIO_COACHING } from '../data/coaching.js'
 import { cardioSessionFor, logCardio } from '../logic/state.js'
 import { useNow } from '../components/useNow.js'
 import { alertChange, alertDone, keepScreenOn, releaseScreen, unlockAudio } from '../lib/alerts.js'
@@ -320,6 +321,13 @@ export default function Cardio() {
         <h1>{session.title}</h1>
         <p className="text-2 small">{formatMinutes(total)} total</p>
       </div>
+
+      <section className="card">
+        <h2>Coach says</h2>
+        <p className="small text-2">
+          {!isPlan ? CARDIO_COACHING.restWalk : state.cardio.phase === 'builder' ? CARDIO_COACHING.builder : CARDIO_COACHING.fitness}
+        </p>
+      </section>
 
       <section className="card">
         <h2>Speeds</h2>

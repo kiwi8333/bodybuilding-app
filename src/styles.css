@@ -422,7 +422,7 @@ ul.cues {
   margin: 0 auto;
   height: var(--nav-h);
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
 }
 
 .nav a {
@@ -1192,4 +1192,138 @@ details.disclosure[open] > summary {
 
 ul.cues.spaced {
   gap: 10px;
+}
+
+/* ---------- Effort (RIR) chips, food, photos ---------- */
+.set-block {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.rir-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-left: 36px;
+  flex-wrap: wrap;
+}
+
+.rir-chip {
+  min-width: 40px;
+  min-height: 32px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  font-weight: 650;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.rir-chip.on {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+
+.meter {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.meter-value {
+  font-size: 1.3rem;
+}
+
+.meter .progress {
+  height: 10px;
+}
+
+.food-list {
+  max-height: 360px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.food-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.food-list li:last-child {
+  border-bottom: none;
+}
+
+.photo-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.photo-grid figure {
+  margin: 0;
+}
+
+.photo-grid img,
+.compare img {
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+  border-radius: 8px;
+  display: block;
+  background: var(--surface-2);
+}
+
+.photo-grid figcaption {
+  font-size: 0.72rem;
+  color: var(--muted);
+  display: flex;
+  justify-content: space-between;
+  gap: 4px;
+  padding-top: 2px;
+}
+
+.compare {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.compare figure {
+  margin: 0;
+}
+
+.compare figcaption {
+  font-size: 0.8rem;
+  color: var(--text-2);
+  text-align: center;
+  padding-top: 4px;
+}
+
+.day-chips {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.day-chips button {
+  min-height: 40px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  font-weight: 650;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.day-chips button.on {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
 }

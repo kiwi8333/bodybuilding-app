@@ -1,0 +1,46 @@
+name: Send reminders
+
+on:
+  schedule:
+    # Every 15 minutes. GitHub may start scheduled runs a little late at busy
+    # times; each reminder has a 3-hour window so none are missed.
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: write
+
+concurrency:
+  group: reminders
+  cancel-in-progress: false
+
+jobs:
+  send:
+    # Only runs once the reminders API is deployed and its URL saved as the
+    # repository variable PUSH_API_URL.
+    if: vars.PUSH_API_URL != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Send due reminders
+        run: node scripts/send-reminders.mjs
+        env:
+          PUSH_API_URL: ${{ vars.PUSH_API_URL }}
+          VAPID_PUBLIC_KEY: ${{ secrets.VAPID_PUBLIC_KEY }}
+          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
+          SEALING_PRIVATE_JWK: ${{ secrets.SEALING_PRIVATE_JWK }}
+          WORKER_SIGNING_KEY: ${{ secrets.WORKER_SIGNING_KEY }}
+      - name: Keep this schedule enabled
+        # GitHub pauses scheduled workflows in repositories with no activity for
+        # 60 days. Re-enabling from a successful run keeps reminders going.
+        if: always()
+        run: gh api -X PUT "repos/${{ github.repository }}/actions/workflows/reminders.yml/enable" || true
+        env:
+          GH_TOKEN: ${{ github.token }}

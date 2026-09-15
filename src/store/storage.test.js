@@ -23,7 +23,8 @@ describe('storage', () => {
 
   it('round-trips saved state', () => {
     const s = memoryStorage()
-    const state = { ...createInitialState(), profile: { onboarded: true, name: 'G' } }
+    const initial = createInitialState()
+    const state = { ...initial, profile: { ...initial.profile, onboarded: true, name: 'G' } }
     saveState(state, s)
     expect(loadState(s).state).toEqual(state)
   })

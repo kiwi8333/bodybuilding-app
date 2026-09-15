@@ -13,6 +13,8 @@ const OUTCOME_PILL = {
   repeat: ['', 'Repeat'],
   reset: ['warn', 'Reset'],
   skipped: ['', 'Skipped'],
+  deload: ['', 'Deload'],
+  swapped: ['warn', 'Swap'],
 }
 
 export default function WorkoutSummary() {

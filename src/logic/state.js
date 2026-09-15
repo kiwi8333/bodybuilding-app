@@ -6,16 +6,22 @@ import { WORKOUTS } from '../data/program.js'
 import { BUILDER_STAGES, FITNESS_ROTATION, REST_DAY_WALK, currentCardioStage } from '../data/cardio.js'
 import { evaluate, initialTrackState, prescribe } from './progression.js'
 import { evaluateCardio, initialCardioState } from './cardioProgression.js'
+import { ACTIVITY_LEVELS, GOALS, initialNutrition, validateFood } from './nutrition.js'
+import { validateHr } from './heart.js'
+import { afterWorkout, cancelDeload, deloadTarget, initialDeload, snoozeDeload, startDeload } from './deload.js'
+import { findSwap } from '../data/swaps.js'
 
-export const SCHEMA_VERSION = 1
+export const SCHEMA_VERSION = 2
 
 export const DEFAULT_EQUIPMENT = { minWeight: 2.5, increment: 2.5, maxWeight: 15 }
+
+export const DEFAULT_REMINDERS = { enabled: false, days: [1, 3, 5], time: '18:00', nudgeMissed: true, nudgeBackup: true }
 
 export function createInitialState() {
   const equipment = { ...DEFAULT_EQUIPMENT }
   return {
     version: SCHEMA_VERSION,
-    profile: { onboarded: false, name: '' },
+    profile: { onboarded: false, name: '', sex: null, birthYear: null, heightCm: null },
     equipment,
     tracks: Object.fromEntries(Object.values(TRACKS).map((t) => [t.id, initialTrackState(t, equipment)])),
     cardio: initialCardioState(),
@@ -24,6 +30,13 @@ export function createInitialState() {
     cardioLogs: [],
     bodyweight: [],
     measurements: [],
+    nutrition: initialNutrition(),
+    heart: { maxHr: null, restingHr: null },
+    reminders: { ...DEFAULT_REMINDERS, days: [...DEFAULT_REMINDERS.days] },
+    deload: initialDeload(),
+    mobilityLogs: [],
+    lastBackupAt: null,
+    ui: { dumbbellAlertDismissedCount: 0 },
   }
 }
 
@@ -128,7 +141,8 @@ export function startWorkout(state, workoutId, now = new Date()) {
   const workout = WORKOUTS[workoutId]
   if (!workout) throw new Error(`Unknown workout ${workoutId}`)
   if (state.activeWorkout) throw new Error('A workout is already in progress.')
-  const exercises = workout.trackIds.map((trackId) => buildExercise(state, trackId, state.tracks[trackId].levelIndex, now))
+  const deload = state.deload.active
+  const exercises = workout.trackIds.map((trackId) => buildExercise(state, trackId, state.tracks[trackId].levelIndex, now, deload))
   return {
     ...state,
     activeWorkout: {
@@ -136,20 +150,48 @@ export function startWorkout(state, workoutId, now = new Date()) {
       workoutId,
       startedAt: now.toISOString(),
       warmUpDone: [],
+      deload,
       exercises,
     },
   }
 }
 
-function buildExercise(state, trackId, levelIndex, now) {
+function buildExercise(state, trackId, levelIndex, now, deload = false, swapId = state.tracks[trackId].swapId ?? null) {
   const track = getTrack(trackId)
   const p = prescribe(track, { ...state.tracks[trackId], levelIndex }, state.equipment, now)
+  let target = { sets: p.sets, low: p.low, high: p.high, weight: p.weight, note: p.note }
+  if (deload) {
+    target = deloadTarget(track, track.levels[p.levelIndex], target, state.equipment)
+    target.note = 'Deload week: one set fewer and about 10% lighter. Keep 3 reps in reserve.'
+  }
   return {
     trackId,
     levelIndex: p.levelIndex,
-    target: { sets: p.sets, low: p.low, high: p.high, weight: p.weight, note: p.note },
-    sets: Array.from({ length: p.sets }, () => ({ weight: p.weight, value: null, done: false })),
+    swapId: findSwap(trackId, swapId) ? swapId : null,
+    target,
+    sets: Array.from({ length: target.sets }, () => ({ weight: target.weight, value: null, done: false, rir: null })),
   }
+}
+
+/**
+ * Use an equivalent exercise instead. `remember` keeps the swap for future
+ * sessions too (e.g. a sore joint). swapId null switches back.
+ */
+export function setExerciseSwap(state, exerciseIndex, swapId, { remember = false } = {}) {
+  const ex = state.activeWorkout?.exercises[exerciseIndex]
+  if (!ex) return state
+  if (swapId !== null && !findSwap(ex.trackId, swapId)) throw new Error('Unknown swap.')
+  if (ex.sets.some((s) => s.done)) throw new Error('Finish or clear logged sets before swapping the exercise.')
+  const next = withExercise(state, exerciseIndex, (e) => ({ ...e, swapId }))
+  if (!remember && swapId !== null) return next
+  return { ...next, tracks: { ...next.tracks, [ex.trackId]: { ...next.tracks[ex.trackId], swapId } } }
+}
+
+// Change a remembered swap outside a workout (Plan page).
+export function setTrackSwap(state, trackId, swapId) {
+  getTrack(trackId)
+  if (swapId !== null && !findSwap(trackId, swapId)) throw new Error('Unknown swap.')
+  return { ...state, tracks: { ...state.tracks, [trackId]: { ...state.tracks[trackId], swapId } } }
 }
 
 function withExercise(state, index, fn) {
@@ -209,7 +251,7 @@ export function changeExerciseLevel(state, exerciseIndex, levelIndex, now = new 
     const factor = levelIndex > state.tracks[ex.trackId].levelIndex ? level.entryFactor ?? 0.8 : 1
     trackState = { ...trackState, weight: (state.tracks[ex.trackId].weight ?? 0) * factor }
   }
-  const rebuilt = buildExercise({ ...state, tracks: { ...state.tracks, [ex.trackId]: trackState } }, ex.trackId, levelIndex, now)
+  const rebuilt = buildExercise({ ...state, tracks: { ...state.tracks, [ex.trackId]: trackState } }, ex.trackId, levelIndex, now, aw.deload, ex.swapId)
   return withExercise(state, exerciseIndex, () => rebuilt)
 }
 
@@ -224,15 +266,31 @@ export function finishWorkout(state, now = new Date()) {
   const tracks = { ...state.tracks }
   const exercises = aw.exercises.map((ex) => {
     const track = getTrack(ex.trackId)
+    const swap = ex.swapId ? findSwap(ex.trackId, ex.swapId) : null
     const completedSets = ex.sets
       .filter((s) => s.done && Number.isFinite(s.value) && s.value > 0)
-      .map((s) => ({ value: s.value, weight: track.type === 'weighted' ? s.weight : null }))
-    const result = evaluate(track, tracks[ex.trackId], { levelIndex: ex.levelIndex, sets: completedSets }, state.equipment, performedAt)
+      .map((s) => ({ value: s.value, weight: track.type === 'weighted' ? s.weight : null, rir: Number.isInteger(s.rir) ? s.rir : null }))
+
+    let result
+    if (completedSets.length && (aw.deload || swap)) {
+      // Deloads and swaps never move progression; they only mark the date so
+      // the two-week layoff rule still knows you trained.
+      result = {
+        state: { ...tracks[ex.trackId], lastPerformedAt: performedAt },
+        outcome: aw.deload ? 'deload' : 'swapped',
+        message: aw.deload
+          ? 'Deload set logged. Targets stay where they were for after the deload.'
+          : `Logged as ${swap.name}. Progression on ${track.levels[ex.levelIndex].name} is paused until you switch back.`,
+      }
+    } else {
+      result = evaluate(track, tracks[ex.trackId], { levelIndex: ex.levelIndex, sets: completedSets }, state.equipment, performedAt)
+    }
     tracks[ex.trackId] = result.state
     return {
       trackId: ex.trackId,
       levelIndex: ex.levelIndex,
-      levelName: track.levels[ex.levelIndex].name,
+      levelName: swap ? swap.name : track.levels[ex.levelIndex].name,
+      swapId: swap ? swap.id : null,
       type: track.type,
       target: ex.target,
       sets: completedSets,
@@ -245,9 +303,27 @@ export function finishWorkout(state, now = new Date()) {
     workoutId: aw.workoutId,
     startedAt: aw.startedAt,
     finishedAt: performedAt,
+    deload: Boolean(aw.deload),
     exercises,
   }
-  return { ...state, tracks, activeWorkout: null, workouts: [...state.workouts, record] }
+  const workouts = [...state.workouts, record]
+  const deload = aw.deload ? afterWorkout(state.deload, workouts.length) : state.deload
+  return { ...state, tracks, activeWorkout: null, workouts, deload }
+}
+
+// ---------- Deload ----------
+
+export function beginDeload(state) {
+  if (state.activeWorkout) throw new Error('Finish your current workout first.')
+  return { ...state, deload: startDeload(state.deload) }
+}
+
+export function postponeDeload(state) {
+  return { ...state, deload: snoozeDeload(state.deload, state.workouts.length) }
+}
+
+export function endDeloadEarly(state) {
+  return { ...state, deload: cancelDeload(state.deload, state.workouts.length) }
 }
 
 export function deleteWorkoutRecord(state, id) {
@@ -292,7 +368,12 @@ export function logCardio(state, log, now = new Date()) {
     jogSpeed: withSpeeds.cardio.jogSpeed,
     elapsedSeconds: Math.max(0, Math.round(Number(log.elapsedSeconds) || 0)),
     distanceMiles: distance,
+    avgHr: validateHr(log.avgHr, { min: 40, max: 230, label: 'Average heart rate' }),
+    maxHr: validateHr(log.maxHr, { min: 40, max: 230, label: 'Max heart rate' }),
     notes: String(log.notes ?? '').slice(0, 500),
+  }
+  if (base.avgHr !== null && base.maxHr !== null && base.maxHr < base.avgHr) {
+    throw new Error('Max heart rate cannot be lower than the average.')
   }
 
   if (log.kind === 'rest-walk') {
@@ -357,6 +438,115 @@ export function deleteMeasurement(state, date) {
   return { ...state, measurements: state.measurements.filter((e) => e.date !== date) }
 }
 
+// ---------- Body profile, nutrition, heart ----------
+
+export function updateBodyProfile(state, { sex, age, heightCm }, now = new Date()) {
+  if (sex !== 'male' && sex !== 'female') throw new Error('Choose male or female (used only for the calorie formula).')
+  const a = Number(age)
+  if (!Number.isInteger(a) || a < 14 || a > 90) throw new Error('Age must be a whole number between 14 and 90.')
+  const h = Number(heightCm)
+  if (!Number.isFinite(h) || h < 120 || h > 230) throw new Error('Height must be between 120 and 230 cm.')
+  return { ...state, profile: { ...state.profile, sex, birthYear: now.getFullYear() - a, heightCm: Math.round(h) } }
+}
+
+export function updateNutritionSettings(state, { activity, goal }) {
+  if (!ACTIVITY_LEVELS.some((x) => x.id === activity)) throw new Error('Choose an activity level.')
+  if (!GOALS.some((x) => x.id === goal)) throw new Error('Choose a goal.')
+  const goalChanged = goal !== state.nutrition.goal
+  // A new goal starts from fresh numbers; old weekly adjustments no longer apply.
+  return { ...state, nutrition: { ...state.nutrition, activity, goal, calorieAdjust: goalChanged ? 0 : state.nutrition.calorieAdjust } }
+}
+
+export function applyCalorieAdjust(state, delta, now = new Date()) {
+  const d = Number(delta)
+  if (![-150, 150].includes(d)) throw new Error('Invalid adjustment.')
+  const next = Math.max(-600, Math.min(600, state.nutrition.calorieAdjust + d))
+  return { ...state, nutrition: { ...state.nutrition, calorieAdjust: next, lastAdjustDate: dateKey(now) } }
+}
+
+export function addFoodEntry(state, date, food, now = new Date()) {
+  if (!DATE_RE.test(date)) throw new Error('Pick a valid date.')
+  const clean = validateFood(food)
+  const servings = food.servings === undefined ? 1 : Number(food.servings)
+  if (!Number.isFinite(servings) || servings < 0.25 || servings > 20) throw new Error('Servings must be between 0.25 and 20.')
+  const entry = {
+    id: makeId(now),
+    name: servings === 1 ? clean.name : `${clean.name} × ${servings}`,
+    kcal: Math.round(clean.kcal * servings),
+    protein: Math.round(clean.protein * servings * 10) / 10,
+  }
+  const day = state.nutrition.log[date] ?? []
+  if (day.length >= 60) throw new Error('That day already has 60 entries.')
+  return { ...state, nutrition: { ...state.nutrition, log: { ...state.nutrition.log, [date]: [...day, entry] } } }
+}
+
+export function deleteFoodEntry(state, date, id) {
+  const day = (state.nutrition.log[date] ?? []).filter((e) => e.id !== id)
+  const log = { ...state.nutrition.log }
+  if (day.length) log[date] = day
+  else delete log[date]
+  return { ...state, nutrition: { ...state.nutrition, log } }
+}
+
+export function saveCustomFood(state, food, now = new Date()) {
+  const clean = validateFood(food)
+  if (state.nutrition.customFoods.length >= 100) throw new Error('You can save up to 100 foods.')
+  if (state.nutrition.customFoods.some((f) => f.name.toLowerCase() === clean.name.toLowerCase())) {
+    throw new Error('A saved food already has that name.')
+  }
+  return { ...state, nutrition: { ...state.nutrition, customFoods: [...state.nutrition.customFoods, { id: makeId(now), ...clean }] } }
+}
+
+export function deleteCustomFood(state, id) {
+  return { ...state, nutrition: { ...state.nutrition, customFoods: state.nutrition.customFoods.filter((f) => f.id !== id) } }
+}
+
+export function updateHeart(state, { maxHr, restingHr }) {
+  const max = validateHr(maxHr, { min: 120, max: 230, label: 'Max heart rate' })
+  const rest = validateHr(restingHr, { min: 30, max: 110, label: 'Resting heart rate' })
+  if (max !== null && rest !== null && rest >= max - 40) throw new Error('Resting heart rate must be well below max heart rate.')
+  return { ...state, heart: { maxHr: max, restingHr: rest } }
+}
+
+// ---------- Reminders, mobility, backup, UI ----------
+
+const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/
+
+export function validateReminders(r) {
+  if (!isObj(r)) throw new Error('Invalid reminder settings.')
+  const days = [...new Set(r.days)].sort((a, b) => a - b)
+  if (!days.length || !days.every((d) => Number.isInteger(d) && d >= 0 && d <= 6)) throw new Error('Pick at least one training day.')
+  if (!TIME_RE.test(r.time)) throw new Error('Pick a reminder time.')
+  // Reminders get a 3-hour delivery window; keeping times between 05:00 and
+  // 21:00 means that window never runs past midnight.
+  const mins = Number(r.time.slice(0, 2)) * 60 + Number(r.time.slice(3))
+  if (mins < 300 || mins > 1260) throw new Error('Pick a reminder time between 05:00 and 21:00.')
+  return {
+    enabled: r.enabled === true,
+    days,
+    time: r.time,
+    nudgeMissed: r.nudgeMissed !== false,
+    nudgeBackup: r.nudgeBackup !== false,
+  }
+}
+
+export function updateReminders(state, reminders) {
+  return { ...state, reminders: validateReminders(reminders) }
+}
+
+export function logMobility(state, now = new Date()) {
+  const logs = [...state.mobilityLogs, now.toISOString()].slice(-500)
+  return { ...state, mobilityLogs: logs }
+}
+
+export function markBackedUp(state, now = new Date()) {
+  return { ...state, lastBackupAt: now.toISOString() }
+}
+
+export function dismissDumbbellAlert(state, count) {
+  return { ...state, ui: { ...state.ui, dumbbellAlertDismissedCount: count } }
+}
+
 // ---------- Validation (used on load and on backup restore) ----------
 
 const isObj = (v) => v !== null && typeof v === 'object' && !Array.isArray(v)
@@ -375,12 +565,23 @@ function fail(path, why) {
  */
 export function normalizeState(raw) {
   if (!isObj(raw)) fail('root', 'not an object')
-  if (raw.version !== SCHEMA_VERSION) fail('version', `expected ${SCHEMA_VERSION}, got ${JSON.stringify(raw.version)}`)
+  // Version 1 data (before nutrition, heart rate, reminders, deloads, swaps
+  // and mobility) is upgraded: its sections are validated as before and the
+  // new sections start from their defaults.
+  if (raw.version !== 1 && raw.version !== SCHEMA_VERSION) fail('version', `expected 1 or ${SCHEMA_VERSION}, got ${JSON.stringify(raw.version)}`)
+  const v2 = raw.version === 2
 
   const fresh = createInitialState()
 
   if (!isObj(raw.profile)) fail('profile', 'missing')
-  const profile = { onboarded: raw.profile.onboarded === true, name: isStr(raw.profile.name) ? raw.profile.name.slice(0, 40) : '' }
+  const profile = { onboarded: raw.profile.onboarded === true, name: isStr(raw.profile.name) ? raw.profile.name.slice(0, 40) : '', sex: null, birthYear: null, heightCm: null }
+  if (v2) {
+    const pr = raw.profile
+    if (pr.sex !== null && pr.sex !== 'male' && pr.sex !== 'female') fail('profile.sex', 'invalid')
+    if (pr.birthYear !== null && (!Number.isInteger(pr.birthYear) || pr.birthYear < 1900 || pr.birthYear > 2100)) fail('profile.birthYear', 'invalid')
+    if (pr.heightCm !== null && (!isNum(pr.heightCm) || pr.heightCm < 100 || pr.heightCm > 250)) fail('profile.heightCm', 'invalid')
+    Object.assign(profile, { sex: pr.sex, birthYear: pr.birthYear, heightCm: pr.heightCm })
+  }
 
   let equipment
   try {
@@ -405,11 +606,14 @@ export function normalizeState(raw) {
     if (!Number.isInteger(s.missStreak) || s.missStreak < 0) fail(`${p}.missStreak`, 'invalid')
     const last = s.lastPerformedAt ?? null
     if (last !== null && !isIso(last)) fail(`${p}.lastPerformedAt`, 'invalid date')
+    const swapId = s.swapId ?? null
+    if (swapId !== null && !findSwap(track.id, swapId)) fail(`${p}.swapId`, 'unknown swap')
     tracks[track.id] = {
       levelIndex: s.levelIndex,
       weight: track.type === 'weighted' ? s.weight : null,
       missStreak: s.missStreak,
       lastPerformedAt: last,
+      swapId,
     }
   }
 
@@ -448,7 +652,13 @@ export function normalizeState(raw) {
     if (!isNum(l.walkSpeed) || !isNum(l.jogSpeed)) fail(p, 'invalid speeds')
     if (!isNum(l.elapsedSeconds) || l.elapsedSeconds < 0) fail(`${p}.elapsedSeconds`, 'invalid')
     if (l.distanceMiles !== null && (!isNum(l.distanceMiles) || l.distanceMiles < 0)) fail(`${p}.distanceMiles`, 'invalid')
+    for (const k of ['avgHr', 'maxHr']) {
+      const v = l[k] ?? null
+      if (v !== null && (!Number.isInteger(v) || v < 30 || v > 250)) fail(`${p}.${k}`, 'invalid')
+    }
     return {
+      avgHr: l.avgHr ?? null,
+      maxHr: l.maxHr ?? null,
       id: l.id,
       date: l.date,
       kind: l.kind,
@@ -484,6 +694,8 @@ export function normalizeState(raw) {
     return out
   })
 
+  const extras = v2 ? checkV2Sections(raw, workouts.length) : {}
+
   return {
     ...fresh,
     version: SCHEMA_VERSION,
@@ -496,6 +708,82 @@ export function normalizeState(raw) {
     cardioLogs,
     bodyweight,
     measurements,
+    ...extras,
+  }
+}
+
+function checkV2Sections(raw, workoutCount) {
+  const n = raw.nutrition
+  if (!isObj(n)) fail('nutrition', 'missing')
+  if (!ACTIVITY_LEVELS.some((a) => a.id === n.activity)) fail('nutrition.activity', 'invalid')
+  if (!GOALS.some((g) => g.id === n.goal)) fail('nutrition.goal', 'invalid')
+  if (!isNum(n.calorieAdjust) || Math.abs(n.calorieAdjust) > 600) fail('nutrition.calorieAdjust', 'invalid')
+  if (n.lastAdjustDate !== null && !DATE_RE.test(n.lastAdjustDate)) fail('nutrition.lastAdjustDate', 'invalid')
+  if (!isObj(n.log)) fail('nutrition.log', 'invalid')
+  const log = {}
+  for (const [date, entries] of Object.entries(n.log)) {
+    if (!DATE_RE.test(date) || !Array.isArray(entries)) fail(`nutrition.log.${date}`, 'invalid')
+    log[date] = entries.map((e, i) => {
+      const p = `nutrition.log.${date}[${i}]`
+      if (!isObj(e) || !isStr(e.id) || !isStr(e.name)) fail(p, 'invalid entry')
+      if (!isNum(e.kcal) || e.kcal < 0 || e.kcal > 100000) fail(`${p}.kcal`, 'invalid')
+      if (!isNum(e.protein) || e.protein < 0 || e.protein > 6000) fail(`${p}.protein`, 'invalid')
+      return { id: e.id, name: e.name.slice(0, 80), kcal: e.kcal, protein: e.protein }
+    })
+  }
+  if (!Array.isArray(n.customFoods)) fail('nutrition.customFoods', 'invalid')
+  const customFoods = n.customFoods.map((f, i) => {
+    if (!isObj(f) || !isStr(f.id)) fail(`nutrition.customFoods[${i}]`, 'invalid')
+    try {
+      return { id: f.id, ...validateFood(f) }
+    } catch (e) {
+      return fail(`nutrition.customFoods[${i}]`, e.message)
+    }
+  })
+
+  const h = raw.heart
+  if (!isObj(h)) fail('heart', 'missing')
+  let heart
+  try {
+    heart = updateHeart({}, { maxHr: h.maxHr, restingHr: h.restingHr }).heart
+  } catch (e) {
+    fail('heart', e.message)
+  }
+
+  let reminders
+  try {
+    reminders = validateReminders(raw.reminders)
+  } catch (e) {
+    fail('reminders', e.message)
+  }
+
+  const d = raw.deload
+  if (!isObj(d) || typeof d.active !== 'boolean') fail('deload', 'invalid')
+  for (const k of ['workoutsDone', 'lastEndedAtCount', 'completedCount']) {
+    if (!Number.isInteger(d[k]) || d[k] < 0) fail(`deload.${k}`, 'invalid')
+  }
+  if (d.snoozedAtCount !== null && (!Number.isInteger(d.snoozedAtCount) || d.snoozedAtCount < 0)) fail('deload.snoozedAtCount', 'invalid')
+  const deload = {
+    active: d.active,
+    workoutsDone: d.workoutsDone,
+    // Deleting history can leave the marker past the end; clamp it.
+    lastEndedAtCount: Math.min(d.lastEndedAtCount, workoutCount),
+    snoozedAtCount: d.snoozedAtCount === null ? null : Math.min(d.snoozedAtCount, workoutCount),
+    completedCount: d.completedCount,
+  }
+
+  if (!Array.isArray(raw.mobilityLogs) || !raw.mobilityLogs.every(isIso)) fail('mobilityLogs', 'invalid')
+  if (raw.lastBackupAt !== null && !isIso(raw.lastBackupAt)) fail('lastBackupAt', 'invalid')
+  if (!isObj(raw.ui) || !Number.isInteger(raw.ui.dumbbellAlertDismissedCount) || raw.ui.dumbbellAlertDismissedCount < 0) fail('ui', 'invalid')
+
+  return {
+    nutrition: { activity: n.activity, goal: n.goal, calorieAdjust: n.calorieAdjust, lastAdjustDate: n.lastAdjustDate, log, customFoods },
+    heart,
+    reminders,
+    deload,
+    mobilityLogs: [...raw.mobilityLogs],
+    lastBackupAt: raw.lastBackupAt,
+    ui: { dumbbellAlertDismissedCount: raw.ui.dumbbellAlertDismissedCount },
   }
 }
 
@@ -503,9 +791,17 @@ function checkSet(s, p, { requireDone }) {
   if (!isObj(s)) fail(p, 'not an object')
   if (s.weight !== null && (!isNum(s.weight) || s.weight < 0)) fail(`${p}.weight`, 'invalid')
   if (s.value !== null && (!isNum(s.value) || s.value < 0)) fail(`${p}.value`, 'invalid')
-  if (requireDone) return { weight: s.weight, value: s.value }
+  const rir = s.rir ?? null
+  if (rir !== null && (!Number.isInteger(rir) || rir < 0 || rir > 3)) fail(`${p}.rir`, 'invalid')
+  if (requireDone) return { weight: s.weight, value: s.value, rir }
   if (typeof s.done !== 'boolean') fail(`${p}.done`, 'invalid')
-  return { weight: s.weight, value: s.value, done: s.done }
+  return { weight: s.weight, value: s.value, done: s.done, rir }
+}
+
+function checkSwapId(ex, p) {
+  const swapId = ex.swapId ?? null
+  if (swapId !== null && !findSwap(ex.trackId, swapId)) fail(`${p}.swapId`, 'unknown swap')
+  return swapId
 }
 
 function checkExerciseCommon(ex, p) {
@@ -529,10 +825,17 @@ function checkActiveWorkout(aw) {
     workoutId: aw.workoutId,
     startedAt: aw.startedAt,
     warmUpDone: [...aw.warmUpDone],
+    deload: aw.deload === true,
     exercises: aw.exercises.map((ex, i) => {
       const ep = `${p}.exercises[${i}]`
       checkExerciseCommon(ex, ep)
-      return { trackId: ex.trackId, levelIndex: ex.levelIndex, target: { ...ex.target }, sets: ex.sets.map((s, j) => checkSet(s, `${ep}.sets[${j}]`, { requireDone: false })) }
+      return {
+        trackId: ex.trackId,
+        levelIndex: ex.levelIndex,
+        swapId: checkSwapId(ex, ep),
+        target: { ...ex.target },
+        sets: ex.sets.map((s, j) => checkSet(s, `${ep}.sets[${j}]`, { requireDone: false })),
+      }
     }),
   }
 }
@@ -546,6 +849,7 @@ function checkWorkoutRecord(w, p) {
     workoutId: w.workoutId,
     startedAt: w.startedAt,
     finishedAt: w.finishedAt,
+    deload: w.deload === true,
     exercises: w.exercises.map((ex, i) => {
       const ep = `${p}.exercises[${i}]`
       const track = checkExerciseCommon(ex, ep)
@@ -553,6 +857,7 @@ function checkWorkoutRecord(w, p) {
         trackId: ex.trackId,
         levelIndex: ex.levelIndex,
         levelName: isStr(ex.levelName) ? ex.levelName : track.levels[ex.levelIndex].name,
+        swapId: checkSwapId(ex, ep),
         type: track.type,
         target: { ...ex.target },
         sets: ex.sets.map((s, j) => checkSet(s, `${ep}.sets[${j}]`, { requireDone: true })),
@@ -567,11 +872,14 @@ function checkWorkoutRecord(w, p) {
 
 export const BACKUP_APP_ID = 'forge-bodybuilding'
 
-export function serializeBackup(state, now = new Date()) {
-  return JSON.stringify({ app: BACKUP_APP_ID, exportedAt: now.toISOString(), data: state }, null, 2)
+// photos: optional array of progress photos to include (see store/photos.js).
+export function serializeBackup(state, now = new Date(), photos = null) {
+  const file = { app: BACKUP_APP_ID, exportedAt: now.toISOString(), data: state }
+  if (photos) file.photos = photos
+  return JSON.stringify(file, photos ? undefined : null, photos ? undefined : 2)
 }
 
-export function parseBackup(text) {
+function parseBackupFile(text) {
   let parsed
   try {
     parsed = JSON.parse(text)
@@ -579,5 +887,25 @@ export function parseBackup(text) {
     throw new Error('This file is not valid JSON.')
   }
   if (!isObj(parsed) || parsed.app !== BACKUP_APP_ID) throw new Error('This is not a Forge backup file.')
-  return normalizeState(parsed.data)
+  return parsed
+}
+
+export function parseBackup(text) {
+  return normalizeState(parseBackupFile(text).data)
+}
+
+/**
+ * Validates the whole backup, including photos, before anything is written.
+ * Returns { state, photos } where photos is null when the backup has none
+ * (so existing photos on the device are left alone).
+ */
+export function parseFullBackup(text, validatePhoto) {
+  const file = parseBackupFile(text)
+  const state = normalizeState(file.data)
+  let photos = null
+  if (file.photos !== undefined) {
+    if (!Array.isArray(file.photos)) fail('photos', 'not a list')
+    photos = file.photos.map((p, i) => validatePhoto(p, `photos[${i}]`))
+  }
+  return { state, photos }
 }

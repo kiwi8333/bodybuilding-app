@@ -41,7 +41,7 @@ describe('weighted double progression', () => {
   const start = () => initialTrackState(squat, EQ)
 
   it('starts at the level-1 suggested weight', () => {
-    expect(start()).toEqual({ levelIndex: 0, weight: 7.5, missStreak: 0, lastPerformedAt: null })
+    expect(start()).toEqual({ levelIndex: 0, weight: 7.5, missStreak: 0, lastPerformedAt: null, swapId: null })
   })
 
   it('adds weight when every set hits the top of the range', () => {

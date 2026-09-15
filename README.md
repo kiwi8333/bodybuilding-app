@@ -53,7 +53,38 @@ Home Screen; Android/Chrome: ⋮ → Install app). It works offline in the gym.
 - Guided treadmill interval timer (speed per segment, survives screen lock/reload)
 - Progress: strength charts per exercise, personal bests, bodyweight chart,
   measurements, full history
-- Backup export/restore (data stays on your device; nothing is uploaded)
+- Backup to Google Drive, iCloud Files or email via the share menu (optionally with photos),
+  weekly backup reminders, and full validated restore
+- **Food:** calorie and protein targets (Mifflin–St Jeor + goal), a quick-add list of common
+  foods, saved custom foods, and a weekly check-in that adjusts calories from your weigh-ins
+- **Workout reminders:** push notifications on training days, a nudge after a missed session,
+  and a Sunday backup reminder (see "Reminders setup" below)
+- **Deload weeks:** offered every 24 workouts; one set fewer and ~10% lighter for 3 sessions,
+  with progression paused
+- **Exercise swaps:** an equivalent movement per exercise (no chair, sore joint…), one-off or
+  remembered, with its own demo; progression on the original is paused while swapped
+- **Progress photos:** stored privately on the phone (IndexedDB) with first-vs-latest comparison
+- **Effort per set:** optional reps-in-reserve; easy sets earn a double weight jump, sets to
+  failure repeat the weight
+- **Heavier-dumbbell alert** when several exercises have outgrown the dumbbells
+- **5-minute rest-day mobility routine** with guided timer and demos
+- **Heart rate:** avg/max HR per cardio session, personal zones (Tanaka max HR, Karvonen when
+  resting HR is known), target zone per treadmill segment and a heart-rate trend chart
+
+## Reminders setup
+
+Reminders need a tiny server because GitHub Pages is static:
+
+- **Sender:** `.github/workflows/reminders.yml` runs every 15 minutes and sends due pushes.
+- **Receiver:** `api/*.js` on Vercel stores each phone's *sealed* reminder settings in a private
+  Vercel Blob. Phones encrypt with a public key; only the sender (GitHub secret) can decrypt.
+- **Secrets** (already set): `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `SEALING_PRIVATE_JWK`,
+  `WORKER_SIGNING_KEY`.
+
+To connect: import this repository at vercel.com (framework "Other"), add a Blob store to the
+project (Storage → Create → Blob, connect to the project), redeploy, then set the repository
+variable `PUSH_API_URL` to the Vercel URL (e.g. `https://bodybuilding-app.vercel.app`) and
+re-run the "Test and deploy" workflow.
 
 ## Development
 
@@ -73,7 +104,9 @@ Structure:
 - `src/data/`: exercise tracks and levels, workouts, cardio stages, tempo, coaching
 - `src/demo/`: inverse-kinematics figure rig and per-exercise choreography (tests check that
   bones keep their length, nothing goes through the floor, and loops are seamless)
-- `src/logic/`: pure, unit-tested rules (progression, cardio, state, history)
+- `src/logic/`: pure, unit-tested rules (progression, cardio, state, history, nutrition, heart, deload)
+- `src/reminders/`: schedule rules, sealing (Web Crypto) and the phone-side push client
+- `api/`: Vercel functions for reminders; `scripts/send-reminders.mjs`: the scheduled sender
 - `src/store/`: localStorage persistence with validation and corrupt-data recovery
 - `src/pages/`, `src/components/`: React UI
 

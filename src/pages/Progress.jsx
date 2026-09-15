@@ -18,6 +18,9 @@ import { formatKg } from '../logic/weights.js'
 import { setsText } from '../lib/describe.js'
 import { formatDate } from '../lib/format.js'
 import LineChart from '../components/LineChart.jsx'
+import PhotosSection from '../components/PhotosSection.jsx'
+import { heartZones } from '../logic/heart.js'
+import { ageFromBirthYear } from '../logic/nutrition.js'
 
 function round1(n) {
   return Math.round(n * 10) / 10
@@ -358,6 +361,35 @@ function HistorySection() {
   )
 }
 
+function HeartRateSection() {
+  const { state } = useStore()
+  const withHr = state.cardioLogs.filter((c) => c.avgHr !== null && c.kind !== 'rest-walk').sort((a, b) => a.date.localeCompare(b.date))
+  const zones = heartZones(state.heart, ageFromBirthYear(state.profile.birthYear))
+  if (!withHr.length) {
+    return (
+      <section className="card">
+        <h2>Heart rate</h2>
+        <p className="hint">Log average and max heart rate from your watch after cardio. As your fitness improves, the same session shows a lower average.</p>
+      </section>
+    )
+  }
+  const zoneOf = (bpm) => (zones ? (zones.zones.findLast((z) => bpm >= z.loBpm)?.zone ?? 1) : null)
+  return (
+    <section className="card">
+      <div className="stack" style={{ gap: 4 }}>
+        <h2>Heart rate</h2>
+        <p className="small text-2">Average heart rate per treadmill session. Lower numbers for the same stage and speed mean your heart is getting fitter.</p>
+      </div>
+      <LineChart
+        title="Average heart rate"
+        unit=" bpm"
+        points={withHr.map((c) => ({ date: dateKey(new Date(c.date)), y: c.avgHr, c }))}
+        detail={(p) => `${p.c.title}${p.c.maxHr ? ` · max ${p.c.maxHr}` : ''}${zones ? ` · zone ${zoneOf(p.y)}` : ''}`}
+      />
+    </section>
+  )
+}
+
 export default function Progress() {
   const { state } = useStore()
   const cardioDone = state.cardioLogs.filter((c) => c.kind !== 'rest-walk' && c.completed).length
@@ -386,8 +418,10 @@ export default function Progress() {
         </div>
       </div>
       <ExerciseSection />
+      <HeartRateSection />
       <BodyweightSection />
       <MeasurementsSection />
+      <PhotosSection />
       <HistorySection />
     </>
   )

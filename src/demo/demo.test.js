@@ -1,11 +1,19 @@
 import { describe, expect, it } from 'vitest'
 import { TRACKS } from '../data/tracks.js'
+import { SWAPS, swapDemoId } from '../data/swaps.js'
+import { MOBILITY_ROUTINE } from '../data/mobility.js'
 import { TEMPO, repPhases, repSeconds, tempoText } from '../data/tempo.js'
 import { BONES, FLOOR_Y, VIEWBOX, circleIntersectUpper, dist, skeleton, solveTwoBone } from './rig.js'
 import { movementFor } from './movements.js'
 import { buildTimeline, frameAt, verticalBounds } from './timeline.js'
 
-const ALL_LEVELS = Object.values(TRACKS).flatMap((t) => t.levels.map((l) => ({ track: t, level: l })))
+const LEVELS_ONLY = Object.values(TRACKS).flatMap((t) => t.levels.map((l) => ({ track: t, level: l })))
+// Every animated demo: exercise levels, swaps with their own movement, and mobility.
+const EXTRA_IDS = [
+  ...Object.values(SWAPS).flat().map(swapDemoId),
+  ...MOBILITY_ROUTINE.map((m) => m.id),
+].filter((id, i, all) => all.indexOf(id) === i && !LEVELS_ONLY.some(({ level }) => level.id === id))
+const ALL_LEVELS = [...LEVELS_ONLY, ...EXTRA_IDS.map((id) => ({ track: { id: "extra" }, level: { id } }))]
 
 describe('rig geometry', () => {
   it('two-bone IK keeps bone lengths exact and reaches reachable targets', () => {
@@ -165,8 +173,43 @@ describe('exercise demos', () => {
     }
   })
 
+  it('lying triceps extension keeps the upper arm vertical', () => {
+    const sk = skeleton(movementFor('lying-triceps-extension').poses.bottom)
+    expect(Math.abs(sk.elbowN[0] - sk.shoulder[0])).toBeLessThan(4)
+    expect(sk.elbowN[1]).toBeLessThan(sk.shoulder[1] - 14)
+  })
+
   it('front squat depth: hips drop well below the standing height', () => {
     const m = movementFor('goblet-squat')
     expect(m.poses.bottom.hip[1] - m.poses.top.hip[1]).toBeGreaterThan(25)
   })
+})
+
+describe('paired limbs move together', () => {
+  // Near and far hands (and feet) that start and end close together must stay
+  // close through the whole rep. Catches arcs taking opposite directions.
+  const ids = [
+    ...Object.values(TRACKS).flatMap((t) => t.levels.map((l) => l.id)),
+    ...Object.values(SWAPS).flat().map(swapDemoId),
+    ...MOBILITY_ROUTINE.map((m) => m.id),
+  ].filter((id, i, all) => all.indexOf(id) === i)
+
+  for (const id of ids) {
+    it(`${id}: hands and feet stay paired`, () => {
+      const tl = buildTimeline(id)
+      if (tl.movement.view === 'front') return
+      const pairs = [
+        ['handN', 'handF', 'wristN', 'wristF'],
+        ['footN', 'footF', 'ankleN', 'ankleF'],
+      ]
+      for (const [pn, pf, sn, sf] of pairs) {
+        const pairedEverywhere = Object.values(tl.movement.poses).every((p) => p[pn] && p[pf] && dist(p[pn], p[pf]) <= 4)
+        if (!pairedEverywhere) continue
+        for (let i = 0; i <= 80; i++) {
+          const sk = skeleton(frameAt(tl, (tl.total * i) / 80).pose)
+          expect(dist(sk[sn], sk[sf]), `${id} ${sn}/${sf} split at sample ${i}`).toBeLessThan(6)
+        }
+      }
+    })
+  }
 })

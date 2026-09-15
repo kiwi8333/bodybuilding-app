@@ -44,7 +44,7 @@ function byFinished(workouts) {
 export function lastPerformance(workouts, trackId) {
   const sorted = byFinished(workouts)
   for (let i = sorted.length - 1; i >= 0; i--) {
-    const ex = sorted[i].exercises.find((e) => e.trackId === trackId && e.sets.length > 0)
+    const ex = sorted[i].exercises.find((e) => e.trackId === trackId && e.sets.length > 0 && !e.swapId)
     if (ex) return { ...ex, finishedAt: sorted[i].finishedAt }
   }
   return null
@@ -68,7 +68,7 @@ export function exerciseSeries(workouts, trackId, levelIndex) {
   const points = []
   for (const w of byFinished(workouts)) {
     for (const ex of w.exercises) {
-      if (ex.trackId !== trackId || ex.levelIndex !== levelIndex || ex.sets.length === 0) continue
+      if (ex.trackId !== trackId || ex.levelIndex !== levelIndex || ex.sets.length === 0 || ex.swapId) continue
       const best = bestSet(ex)
       points.push({
         date: dateKey(new Date(w.finishedAt)),
@@ -83,7 +83,7 @@ export function exerciseSeries(workouts, trackId, levelIndex) {
 
 export function levelsWithData(workouts, trackId) {
   const set = new Set()
-  for (const w of workouts) for (const ex of w.exercises) if (ex.trackId === trackId && ex.sets.length) set.add(ex.levelIndex)
+  for (const w of workouts) for (const ex of w.exercises) if (ex.trackId === trackId && ex.sets.length && !ex.swapId) set.add(ex.levelIndex)
   return [...set].sort((a, b) => a - b)
 }
 
@@ -115,3 +115,23 @@ export function personalBests(workouts) {
 export function workoutMinutes(record) {
   return Math.max(1, Math.round((new Date(record.finishedAt) - new Date(record.startedAt)) / 60000))
 }
+
+// Swapped exercises are excluded above: their numbers belong to a different
+// movement and would distort charts, personal bests and "last time".
+
+/**
+ * Weighted exercises that have outgrown the dumbbells: at the heaviest weight,
+ * or already moved to harder versions because of that ceiling.
+ */
+export function outgrownDumbbells(state) {
+  const out = []
+  for (const track of Object.values(TRACKS)) {
+    if (track.type !== 'weighted') continue
+    const s = state.tracks[track.id]
+    const atMax = s.weight !== null && Math.round(s.weight * 100) >= Math.round(state.equipment.maxWeight * 100)
+    if (atMax || s.levelIndex > 0) out.push({ trackId: track.id, name: track.levels[s.levelIndex].name, atMax, levelIndex: s.levelIndex })
+  }
+  return out
+}
+
+export const OUTGROWN_ALERT_THRESHOLD = 3

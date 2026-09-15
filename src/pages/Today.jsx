@@ -8,6 +8,7 @@ import { prescribe } from '../logic/progression.js'
 import { startWorkout, dateKey } from '../logic/state.js'
 import { TARGET_SESSIONS_PER_WEEK, weeklyStreak, workoutsThisWeek } from '../logic/history.js'
 import { targetText } from '../lib/describe.js'
+import { FoodSummaryCard, MobilityCard, TodayAlerts } from '../components/TodayCards.jsx'
 
 function greeting(now) {
   const h = now.getHours()
@@ -65,6 +66,8 @@ export default function Today() {
           <span className="label">Week streak</span>
         </div>
       </div>
+
+      <TodayAlerts />
 
       {state.activeWorkout ? (
         <section className="card accent">
@@ -149,6 +152,9 @@ export default function Today() {
           </Link>
         </div>
       </section>
+
+      <FoodSummaryCard />
+      <MobilityCard />
 
       <section className="card">
         <h2>Coach’s notes</h2>

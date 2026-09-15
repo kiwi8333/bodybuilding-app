@@ -5,7 +5,9 @@ import { WARM_UP, WARM_UP_MINUTES, WORKOUTS, estimateLiftMinutes, nextWorkoutId 
 import { TRACKS, isPerSide, repRange } from '../data/tracks.js'
 import { BUILDER_STAGES, FITNESS_ROTATION, REST_DAY_WALK, currentCardioStage, totalSeconds } from '../data/cardio.js'
 import { CARDIO_COACHING, WEEKLY_GUIDE } from '../data/coaching.js'
-import { setTrackLevel } from '../logic/state.js'
+import { beginDeload, setTrackLevel, setTrackSwap } from '../logic/state.js'
+import { DELOAD_WORKOUTS, WORKOUTS_BETWEEN_DELOADS, workoutsSinceDeload } from '../logic/deload.js'
+import { findSwap, swapDemoId, swapsFor } from '../data/swaps.js'
 import { prescribe } from '../logic/progression.js'
 import { formatKg } from '../logic/weights.js'
 import ExerciseDemo from '../components/ExerciseDemo.jsx'
@@ -91,14 +93,18 @@ function SessionFlow({ liftMin, cardioMin }) {
   )
 }
 
-function ExerciseRow({ number, trackId, state, open, onToggle, onChooseLevel }) {
+function ExerciseRow({ number, trackId, state, open, onToggle, onChooseLevel, onSetSwap }) {
   const track = TRACKS[trackId]
   const ts = state.tracks[trackId]
   const p = prescribe(track, ts, state.equipment)
   const level = track.levels[p.levelIndex]
-  const chips = [`${p.sets} sets`, `${p.low}–${p.high}${track.type === 'hold' ? ' s' : ' reps'}${isPerSide(track, p.levelIndex) ? ' / side' : ''}`]
+  const swap = ts.swapId ? findSwap(trackId, ts.swapId) : null
+  const shownName = swap ? swap.name : level.name
+  const demoId = swap ? swapDemoId(swap) : level.id
+  const chips = [`${p.sets} sets`, `${p.low}–${p.high}${track.type === 'hold' ? ' s' : ' reps'}${swap?.perSide || isPerSide(track, p.levelIndex) ? ' / side' : ''}`]
   if (track.type === 'weighted') chips.push(p.weight === 0 ? 'Bodyweight' : formatKg(p.weight))
   chips.push(`Rest ${track.restSeconds} s`)
+  if (swap) chips.push('Swap in use')
 
   return (
     <li className={`ex-row ${open ? 'open' : ''}`}>
@@ -107,8 +113,8 @@ function ExerciseRow({ number, trackId, state, open, onToggle, onChooseLevel }) 
           {number}
         </span>
         <span className="ex-row-main">
-          <span className="ex-row-name">{level.name}</span>
-          <span className="ex-row-muscles">{track.muscles}</span>
+          <span className="ex-row-name">{shownName}</span>
+          <span className="ex-row-muscles">{swap ? `Instead of ${level.name}` : track.muscles}</span>
           <span className="chips">
             {chips.map((c) => (
               <span className="chip" key={c}>
@@ -121,16 +127,30 @@ function ExerciseRow({ number, trackId, state, open, onToggle, onChooseLevel }) 
       </button>
       {open && (
         <div className="ex-row-body">
-          <ExerciseDemo levelId={level.id} name={level.name} />
-          <CoachBox trackId={trackId} levelIndex={p.levelIndex} target={p} />
+          <ExerciseDemo key={demoId} levelId={demoId} name={shownName} />
+          <CoachBox trackId={trackId} levelIndex={p.levelIndex} target={p} showWhy={!swap} />
+          {swap && <p className="small text-2">{swap.why} Progression on {level.name} is paused while this swap is in use.</p>}
           <div className="stack" style={{ gap: 6 }}>
             <h3>Form cues</h3>
             <ol className="cues">
-              {level.cues.map((c) => (
+              {(swap ? swap.cues : level.cues).map((c) => (
                 <li key={c}>{c}</li>
               ))}
             </ol>
           </div>
+          {swapsFor(trackId).length > 0 && (
+            <label className="field">
+              Swap this exercise for future sessions
+              <select className="input" value={ts.swapId ?? ''} onChange={(e) => onSetSwap(trackId, e.target.value || null)}>
+                <option value="">No swap: {level.name}</option>
+                {swapsFor(trackId).map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           <div className="stack" style={{ gap: 6 }}>
             <h3>Progression path</h3>
             <ol className="clean level-list">
@@ -184,10 +204,60 @@ function LiftingTab({ state, apply }) {
     apply((s) => setTrackLevel(s, trackId, levelIndex))
   }
 
+  function setSwap(trackId, swapId) {
+    if (state.activeWorkout) {
+      window.alert('Finish or discard your current workout first. You can also swap inside the workout.')
+      return
+    }
+    apply((s) => setTrackSwap(s, trackId, swapId))
+  }
+
+  const sinceDeload = workoutsSinceDeload(state.deload, state.workouts.length)
+
   return (
     <>
       <WeekCard first={next} />
       <SessionFlow liftMin={liftMin} cardioMin={cardioMin} />
+
+      <section className="card">
+        <div className="row between">
+          <h2>Recovery weeks</h2>
+          <span className={`pill ${state.deload.active ? 'accent' : ''}`}>{state.deload.active ? 'Deload now' : `${Math.min(sinceDeload, WORKOUTS_BETWEEN_DELOADS)}/${WORKOUTS_BETWEEN_DELOADS}`}</span>
+        </div>
+        <p className="small text-2">
+          {state.deload.active
+            ? `Deload session ${state.deload.workoutsDone + 1} of ${DELOAD_WORKOUTS}: one set fewer, about 10% lighter, progression paused.`
+            : `Every ${WORKOUTS_BETWEEN_DELOADS} workouts (about 8 weeks) the app offers a lighter deload week of ${DELOAD_WORKOUTS} sessions. ${sinceDeload} done since the last one.`}
+        </p>
+        {!state.deload.active && (
+          <button
+            className="link-btn"
+            style={{ alignSelf: 'flex-start' }}
+            onClick={() => {
+              if (!window.confirm('Start a deload week now? Use this if you feel run down, sore joints or stalled on several exercises.')) return
+              try {
+                apply((s) => beginDeload(s))
+              } catch (err) {
+                window.alert(err.message)
+              }
+            }}
+          >
+            Start a deload week now
+          </button>
+        )}
+      </section>
+
+      <section className="card">
+        <div className="row between wrap">
+          <div className="stack" style={{ gap: 2 }}>
+            <h2>Rest-day mobility</h2>
+            <p className="small text-2">5-minute guided routine for hips, shoulders and hamstrings. 1–3 times a week.</p>
+          </div>
+          <Link className="btn small" to="/mobility">
+            Open
+          </Link>
+        </div>
+      </section>
 
       <section className="card">
         <div className="segmented" role="tablist" aria-label="Choose workout">
@@ -225,6 +295,7 @@ function LiftingTab({ state, apply }) {
               open={openTrack === trackId}
               onToggle={() => setOpenTrack((cur) => (cur === trackId ? null : trackId))}
               onChooseLevel={chooseLevel}
+              onSetSwap={setSwap}
             />
           ))}
         </ol>
@@ -392,7 +463,10 @@ function RulesTab() {
         <h2>Recovery and food</h2>
         <ul className="cues spaced">
           <li>Protein: about 1.6–2.2 g per kg of bodyweight daily (a palm-sized portion at each meal plus a snack).</li>
-          <li>To gain muscle, eat a small surplus: bodyweight rising about 0.25–0.5 kg a month is ideal for a beginner.</li>
+          <li>
+            To gain muscle, eat a small surplus: bodyweight rising about 0.5–1% a month (0.4–0.8 kg if you weigh 80 kg) is ideal for a beginner. The Food tab sets
+            your targets and adjusts them from your weigh-ins.
+          </li>
           <li>Sleep 7–9 hours. Drink water through the day, more on training days.</li>
         </ul>
       </section>

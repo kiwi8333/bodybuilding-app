@@ -40,7 +40,7 @@ function Prop({ prop }) {
     return (
       <g>
         <rect x={prop.x} y={prop.topY} width={prop.w} height={FLOOR_Y - prop.topY} rx={4} fill={fill} stroke={stroke} strokeWidth={0.6} />
-        <rect x={prop.x} y={prop.topY - 18} width={10} height={FLOOR_Y - prop.topY + 18} rx={4} fill={fill} stroke={stroke} strokeWidth={0.6} />
+        <rect x={prop.back === 'right' ? prop.x + prop.w - 10 : prop.x} y={prop.topY - 18} width={10} height={FLOOR_Y - prop.topY + 18} rx={4} fill={fill} stroke={stroke} strokeWidth={0.6} />
       </g>
     )
   }

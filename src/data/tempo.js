@@ -75,6 +75,22 @@ export const TEMPO = {
   'forearm-plank': { pattern: 'hold' },
   'long-lever-plank': { pattern: 'hold' },
   'feet-elevated-plank': { pattern: 'hold' },
+
+  // Swaps with their own movement (others reuse a level's demo and tempo)
+  'goblet-box-squat': lowerFirst(2, 1, 1),
+  'knee-pushup': lowerFirst(2, 0, 1),
+  'knee-supported-row': liftFirst(1, 1, 2),
+  'partial-lateral-raise': liftFirst(1, 0, 2),
+  'lying-triceps-extension': lowerFirst(2, 0, 1),
+  'heel-taps': { pattern: 'alternate', lower: 2, top: 0, lift: 2, bottom: 0 },
+  'incline-plank': { pattern: 'hold' },
+
+  // Rest-day mobility
+  'mob-arm-reach': liftFirst(2, 0, 2),
+  'mob-deep-squat': { pattern: 'hold' },
+  'mob-hip-flexor': { pattern: 'hold' },
+  'mob-hamstring': { pattern: 'hold' },
+  'mob-bridge-hold': { pattern: 'hold' },
 }
 
 const s = (n) => `${n} s`
@@ -84,7 +100,9 @@ export function tempoText(levelId) {
   const t = TEMPO[levelId]
   if (!t) return ''
   if (t.pattern === 'hold') return 'Hold still, breathe steadily'
-  if (t.pattern === 'alternate') return `${s(t.lower)} reach · ${s(t.top)} hold · ${s(t.lift)} return, then switch sides`
+  if (t.pattern === 'alternate') {
+    return `${s(t.lower)} reach${t.top ? ` · ${s(t.top)} hold` : ''} · ${s(t.lift)} return, then switch sides`
+  }
   const parts = []
   if (t.pattern === 'lower-first') {
     parts.push(`${s(t.lower)} down`)
@@ -116,16 +134,16 @@ export function repPhases(levelId, labels = {}) {
   }
 
   if (t.pattern === 'hold') {
-    add('holdA', 2, 'Brace: glutes and abs tight')
-    add('holdB', 2, 'Breathe steadily')
+    add('holdA', 2, labels.holdA ?? 'Brace: glutes and abs tight')
+    add('holdB', 2, labels.holdB ?? 'Breathe steadily')
     return out
   }
 
   if (t.pattern === 'alternate') {
-    add('reachA', t.lower, 'Reach opposite arm and leg')
+    add('reachA', t.lower, labels.reachA ?? 'Reach opposite arm and leg')
     add('reachA', t.top, 'Hold, lower back flat')
     add('start', t.lift, 'Return')
-    add('reachB', t.lower, 'Other side: reach')
+    add('reachB', t.lower, labels.reachB ?? 'Other side: reach')
     add('reachB', t.top, 'Hold, lower back flat')
     add('start', t.lift, 'Return')
     return out

@@ -300,6 +300,189 @@ function withHalfFront(poses) {
   return { ...poses, half: { arm: (poses.top.arm + poses.bottom.arm) / 2 } }
 }
 
+// ---------- Swap movements ----------
+
+function boxSquat() {
+  const feet = { footN: [86, 107], footF: [83, 107], knee: [1, -0.4] }
+  return {
+    props: [{ type: 'chair', x: 34, seatY: 84, facing: 'left' }],
+    labels: { lower: 'Sit back to the chair', pause: 'Touch lightly, stay tight', lift: 'Stand up tall' },
+    poses: withHalf({
+      top: { ...feet, hip: [82, 57], torso: 4, handN: [92, 36], handF: [91, 36], elbow: [0.2, 1], db: 'goblet' },
+      bottom: { ...feet, hip: [62, 80], torso: 30, handN: [87, 62], handF: [86, 62], elbow: [0.6, 1], db: 'goblet' },
+    }),
+  }
+}
+
+function kneePushup() {
+  const kneeOnFloor = [40, 107]
+  const hands = [95, 107]
+  const thighPlusTorso = BONES.thigh + BONES.torso - 0.5
+  const base = {
+    footN: [16, 97],
+    footF: [15, 97],
+    toe: -110,
+    knee: [0, 1],
+    handN: hands,
+    handF: [hands[0] - 2, hands[1]],
+    elbow: [-1, -0.4],
+    space: { handN: 'world', handF: 'world' },
+  }
+  const top = circleIntersectUpper(kneeOnFloor, thighPlusTorso, hands, BONES.upperArm + BONES.forearm - 0.5)
+  const bottom = circleIntersectUpper(kneeOnFloor, thighPlusTorso, hands, 12)
+  return {
+    props: [],
+    labels: { lower: 'Lower your chest, knees down, body straight', lift: 'Press away to straight arms' },
+    poses: withHalf({
+      top: { ...base, ...straightBody(kneeOnFloor, top) },
+      bottom: { ...base, ...straightBody(kneeOnFloor, bottom) },
+    }),
+  }
+}
+
+function kneeSupportedRow() {
+  const base = {
+    hip: [66, 64],
+    torso: 75,
+    footN: [48, 107],
+    footF: [86, 107],
+    kneeN: [1, 0],
+    kneeF: [1, 0],
+    handF: [88, 80],
+    elbowF: [1, 0.5],
+    db: 'handN',
+    space: { handF: 'world' },
+  }
+  return {
+    props: [],
+    labels: { lift: 'Pull the dumbbell to your hip', hold: 'Squeeze the shoulder blade back', lower: 'Lower to a full stretch' },
+    poses: withHalf({
+      bottom: { ...base, handN: [97, 87], elbowN: [-0.3, 1] },
+      top: { ...base, handN: [80, 68], elbowN: [-0.4, -1] },
+    }),
+  }
+}
+
+function lyingTricepsExtension() {
+  const base = { ...SUPINE, db: 'goblet' }
+  return {
+    props: [],
+    labels: { lower: 'Bend at the elbows, lower beside your head', lift: 'Extend straight up' },
+    poses: withHalf({
+      top: { ...base, handN: [42, 70], handF: [42, 70], elbow: [0.3, -1] },
+      // Upper arm stays vertical (elbow ≈ above the shoulder); only the forearm drops back.
+      bottom: { ...base, handN: [26, 90], handF: [26, 90], elbow: [0.3, -1] },
+    }),
+  }
+}
+
+function heelTaps() {
+  const start = {
+    ...SUPINE,
+    footN: [98, 77],
+    footF: [96, 77],
+    handN: [42, 70],
+    handF: [44, 70],
+    elbow: [0, -1],
+    space: { footN: 'hip', footF: 'hip' },
+  }
+  return {
+    props: [],
+    labels: { reachA: 'Lower one heel to tap the floor', reachB: 'Other heel' },
+    poses: {
+      start,
+      reachA: { ...start, footF: [94, 107] },
+      reachB: { ...start, footN: [96, 107] },
+    },
+  }
+}
+
+function inclinePlank() {
+  const shoulder = [111, 62]
+  return {
+    props: [{ type: 'sofa', x: 104, w: 46, topY: 80, back: 'right' }],
+    labels: {},
+    poses: plankPoses(ankleForShoulder(shoulder, 103), shoulder, [128, 79]),
+  }
+}
+
+function partialLateralRaise() {
+  return {
+    view: 'front',
+    props: [],
+    labels: { lift: 'Raise out to about 60°', lower: 'Lower slowly' },
+    poses: withHalfFront({ bottom: { arm: 12 }, top: { arm: 60 } }),
+  }
+}
+
+// ---------- Mobility movements ----------
+
+const breathe = { holdA: 'Relax into the stretch', holdB: 'Breathe out slowly' }
+
+function armReach() {
+  return {
+    props: [],
+    labels: { lift: 'Reach straight arms overhead', lower: 'Lower slowly' },
+    poses: withHalf({
+      // Both hands start just in front of the thighs so both arms sweep forward
+      // and up together (a hand behind the vertical would swing backwards).
+      bottom: { ...STAND, handN: [84, 57], handF: [83, 57], elbow: [0, 1] },
+      top: { ...STAND, handN: [82, -7], handF: [80, -7], elbow: [0, 1] },
+    }),
+  }
+}
+
+function deepSquatHold() {
+  const base = { footN: [84, 107], footF: [81, 107], knee: [1, -0.4], torso: 28, handN: [86, 71], handF: [85, 71], elbow: [1, 1] }
+  return {
+    props: [],
+    labels: breathe,
+    poses: { holdA: { ...base, hip: [64, 90] }, holdB: { ...base, hip: [64, 89] } },
+  }
+}
+
+function hipFlexorStretch() {
+  const base = {
+    torso: 0,
+    footN: [100, 107],
+    kneeN: [1, -0.3],
+    footF: [52, 107],
+    toeF: -90,
+    kneeF: [1, 0.3],
+    elbow: [-1, 0],
+  }
+  return {
+    props: [],
+    labels: { holdA: 'Squeeze the back glute', holdB: 'Shift hips forward, breathe' },
+    poses: {
+      holdA: { ...base, hip: [80, 84], handN: [84, 80], handF: [82, 80] },
+      holdB: { ...base, hip: [82, 84], handN: [86, 80], handF: [84, 80] },
+    },
+  }
+}
+
+function hamstringStretch() {
+  const base = { footN: [82, 107], footF: [79, 107], knee: [1, 0], hip: [62, 60], elbow: [0, 1] }
+  return {
+    props: [],
+    labels: breathe,
+    poses: {
+      holdA: { ...base, torso: 75, handN: [92, 85], handF: [90, 85] },
+      holdB: { ...base, torso: 78, handN: [95, 86], handF: [93, 86] },
+    },
+  }
+}
+
+function bridgeHold() {
+  const top = gluteBridge({}).poses.top
+  const clean = { ...top, db: undefined }
+  return {
+    props: [],
+    labels: { holdA: 'Hips up, glutes squeezed', holdB: 'Breathe, keep squeezing' },
+    poses: { holdA: clean, holdB: { ...clean, hip: [70, 85] } },
+  }
+}
+
 // ---------- Level → movement ----------
 
 const BY_LEVEL = {
@@ -347,6 +530,20 @@ const BY_LEVEL = {
   'forearm-plank': () => plank('forearm'),
   'long-lever-plank': () => plank('long-lever'),
   'feet-elevated-plank': () => plank('feet-elevated'),
+  // swaps
+  'goblet-box-squat': boxSquat,
+  'knee-pushup': kneePushup,
+  'knee-supported-row': kneeSupportedRow,
+  'partial-lateral-raise': partialLateralRaise,
+  'lying-triceps-extension': lyingTricepsExtension,
+  'heel-taps': heelTaps,
+  'incline-plank': inclinePlank,
+  // mobility
+  'mob-arm-reach': armReach,
+  'mob-deep-squat': deepSquatHold,
+  'mob-hip-flexor': hipFlexorStretch,
+  'mob-hamstring': hamstringStretch,
+  'mob-bridge-hold': bridgeHold,
 }
 
 const cache = new Map()

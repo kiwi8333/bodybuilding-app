@@ -204,7 +204,7 @@ describe('validation and backup', () => {
       mutate(s)
       return () => normalizeState(s)
     }
-    expect(bad((s) => (s.version = 2))).toThrow(/version/)
+    expect(bad((s) => (s.version = 99))).toThrow(/version/)
     expect(bad((s) => (s.tracks.squat.levelIndex = 99))).toThrow(/tracks.squat.levelIndex/)
     expect(bad((s) => (s.tracks.squat.weight = 'heavy'))).toThrow(/tracks.squat.weight/)
     expect(bad((s) => (s.equipment.maxWeight = -1))).toThrow(/equipment/)

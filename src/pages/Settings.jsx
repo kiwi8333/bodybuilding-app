@@ -1,7 +1,12 @@
 import { useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store/StoreContext.jsx'
 import { availableWeights, formatKg } from '../logic/weights.js'
-import { createInitialState, dateKey, parseBackup, serializeBackup, updateCardioSpeeds, updateEquipment } from '../logic/state.js'
+import { createInitialState, dateKey, markBackedUp, parseFullBackup, serializeBackup, updateCardioSpeeds, updateEquipment } from '../logic/state.js'
+import { listPhotos, replaceAllPhotos, validatePhoto } from '../store/photos.js'
+import { disablePush } from '../reminders/client.js'
+import ReminderSettings from '../components/ReminderSettings.jsx'
+import { BodyAndHeartSettings } from '../components/HeartSettings.jsx'
 
 function Status({ status }) {
   if (!status) return null
@@ -14,6 +19,7 @@ function Status({ status }) {
 
 export default function Settings() {
   const { state, apply, replaceAll, readOnly } = useStore()
+  const navigate = useNavigate()
   const onboarded = state.profile.onboarded
 
   const [name, setName] = useState(state.profile.name)
@@ -23,6 +29,7 @@ export default function Settings() {
   const [speeds, setSpeeds] = useState({ walkSpeed: state.cardio.walkSpeed, jogSpeed: state.cardio.jogSpeed })
   const [speedStatus, setSpeedStatus] = useState(null)
   const [backupStatus, setBackupStatus] = useState(null)
+  const [includePhotos, setIncludePhotos] = useState(true)
   const fileRef = useRef(null)
 
   let preview = null
@@ -61,15 +68,26 @@ export default function Settings() {
 
   async function exportBackup() {
     setBackupStatus(null)
-    const text = serializeBackup(state)
+    let photos = null
+    if (includePhotos) {
+      try {
+        photos = await listPhotos()
+      } catch (err) {
+        return setBackupStatus({ ok: false, text: `Could not read photos: ${err.message}` })
+      }
+    }
+    const text = serializeBackup(state, new Date(), photos)
     const filename = `forge-backup-${dateKey()}.json`
     const blob = new Blob([text], { type: 'application/json' })
+    const done = (message) => {
+      apply((s) => markBackedUp(s))
+      setBackupStatus({ ok: true, text: message })
+    }
     try {
       const file = new File([blob], filename, { type: 'application/json' })
       if (navigator.canShare?.({ files: [file] })) {
         await navigator.share({ files: [file], title: 'Forge backup' })
-        setBackupStatus({ ok: true, text: 'Backup shared. Save it to Files, Google Drive or email it to yourself.' })
-        return
+        return done('Backup shared. Choose Google Drive, Save to Files (iCloud) or email so it is stored off this phone.')
       }
     } catch (err) {
       if (err?.name === 'AbortError') return
@@ -83,7 +101,7 @@ export default function Settings() {
     a.click()
     a.remove()
     setTimeout(() => URL.revokeObjectURL(url), 10000)
-    setBackupStatus({ ok: true, text: `Downloaded ${filename}.` })
+    done(`Downloaded ${filename}. Move it to Google Drive or iCloud to keep it safe.`)
   }
 
   async function importBackup(e) {
@@ -91,26 +109,32 @@ export default function Settings() {
     const file = e.target.files?.[0]
     e.target.value = ''
     if (!file) return
-    if (file.size > 20 * 1024 * 1024) return setBackupStatus({ ok: false, text: 'That file is too large to be a Forge backup.' })
+    if (file.size > 150 * 1024 * 1024) return setBackupStatus({ ok: false, text: 'That file is too large to be a Forge backup.' })
     try {
-      const restored = parseBackup(await file.text())
-      const summary = `${restored.workouts.length} workouts, ${restored.cardioLogs.length} cardio sessions, ${restored.bodyweight.length} bodyweight entries`
+      const { state: restored, photos } = parseFullBackup(await file.text(), validatePhoto)
+      const summary = `${restored.workouts.length} workouts, ${restored.cardioLogs.length} cardio sessions, ${restored.bodyweight.length} bodyweight entries${photos ? `, ${photos.length} photos` : ''}`
       if (!window.confirm(`Replace ALL data on this device with this backup (${summary})? This cannot be undone.`)) return
+      // Everything is validated above; photos are written first in a single
+      // transaction, then the rest of the data.
+      if (photos) await replaceAllPhotos(photos)
       replaceAll(restored)
-      setBackupStatus({ ok: true, text: `Restored ${summary}.` })
-      setName(restored.profile.name)
-      setEq({ ...restored.equipment })
-      setSpeeds({ walkSpeed: restored.cardio.walkSpeed, jogSpeed: restored.cardio.jogSpeed })
+      // Show the confirmation on Today: restoring can switch the whole app layout
+      // (e.g. from the welcome screen), which would drop a message shown here.
+      navigate('/', { replace: true, state: { flash: `Restored ${summary}.` } })
     } catch (err) {
       setBackupStatus({ ok: false, text: `Nothing was changed. ${err.message}` })
     }
   }
 
-  function resetAll() {
-    const answer = window.prompt('This deletes every workout, cardio log and measurement on this device. Type DELETE to confirm.')
+  async function resetAll() {
+    const answer = window.prompt('This deletes every workout, cardio log, food entry, measurement and photo on this device. Type DELETE to confirm.')
     if (answer !== 'DELETE') return
     try {
+      if (state.reminders.enabled) await disablePush().catch(() => {})
+      await replaceAllPhotos([]).catch(() => {})
       replaceAll(createInitialState())
+      // Back to the welcome screen rather than a near-empty Settings page.
+      navigate('/', { replace: true })
     } catch (err) {
       setBackupStatus({ ok: false, text: err.message })
     }
@@ -177,21 +201,31 @@ export default function Settings() {
             </button>
             <Status status={speedStatus} />
           </form>
+
+          <ReminderSettings />
+          <BodyAndHeartSettings />
         </>
       )}
 
-      <section className="card">
+      <section className="card" id="backup">
         <div className="stack" style={{ gap: 4 }}>
           <h2>Backup</h2>
           <p className="hint">
-            Your data lives only on this phone, in this browser. Nothing is uploaded. Export a backup every couple of weeks, and before
-            changing phones or clearing browser data.
+            Your data lives only on this phone. Tap <strong>Back up now</strong> and choose Google Drive, Save to Files (iCloud Drive) or email in the share menu. To move
+            phones, open the file on the new phone with Restore.
+          </p>
+          <p className="small text-2">
+            {state.lastBackupAt ? `Last backup: ${new Date(state.lastBackupAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}` : 'No backup yet.'}
           </p>
         </div>
         {readOnly && <p className="banner warn small">Saving is paused because stored data could not be read. Restore a backup or reset below.</p>}
+        <label className="row small">
+          <input type="checkbox" checked={includePhotos} onChange={(e) => setIncludePhotos(e.target.checked)} style={{ width: 20, height: 20, accentColor: 'var(--accent)' }} />
+          Include progress photos (larger file)
+        </label>
         <div className="grid-2">
-          <button className="btn" onClick={exportBackup} disabled={!onboarded}>
-            Export backup
+          <button className="btn primary" onClick={exportBackup} disabled={!onboarded}>
+            Back up now
           </button>
           <button className="btn" onClick={() => fileRef.current?.click()}>
             Restore backup

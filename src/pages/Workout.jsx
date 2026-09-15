@@ -8,6 +8,7 @@ import {
   discardWorkout,
   finishWorkout,
   removeSet,
+  setExerciseSwap,
   setWeightFrom,
   toggleWarmUp,
   updateSet,
@@ -89,6 +90,13 @@ export default function Workout() {
         </div>
       </div>
 
+      {aw.deload && (
+        <p className="banner warn small">
+          Deload week: every exercise has one set fewer and about 10% less weight. Stop each set with 3 reps in reserve. Progression resumes after the
+          deload.
+        </p>
+      )}
+
       <section className="card">
         <details className="disclosure" open={aw.warmUpDone.length < WARM_UP.length && doneSets === 0}>
           <summary>
@@ -118,6 +126,9 @@ export default function Workout() {
           onAddSet={(ei) => apply((s) => addSet(s, ei))}
           onRemoveSet={(ei) => apply((s) => removeSet(s, ei))}
           onChangeLevel={(ei, level) => apply((s) => changeExerciseLevel(s, ei, level))}
+          onSetRir={(ei, si, rir) => apply((s) => updateSet(s, ei, si, { rir }))}
+          onSwap={(ei, swapId, remember) => apply((s) => setExerciseSwap(s, ei, swapId, { remember }))}
+          deload={aw.deload}
         />
       ))}
 

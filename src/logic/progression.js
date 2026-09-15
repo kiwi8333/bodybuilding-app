@@ -8,6 +8,10 @@ export const MISSES_BEFORE_RESET = 2
 // Coming back after this many days off: start ~10% lighter for one session.
 export const LAYOFF_DAYS = 14
 const DELOAD_FACTOR = 0.9
+// Effort ratings: every set with 3+ reps in reserve = "easy" (bigger jump);
+// 2+ sets taken to failure at the top of the range = consolidate first.
+export const EASY_RIR = 3
+export const GRIND_SETS = 2
 const DEFAULT_ENTRY_FACTOR = 0.8
 
 const DAY_MS = 24 * 60 * 60 * 1000
@@ -19,6 +23,7 @@ export function initialTrackState(track, equipment) {
     weight: track.type === 'weighted' ? startWeightFor(level, equipment) : null,
     missStreak: 0,
     lastPerformedAt: null,
+    swapId: null,
   }
 }
 
@@ -97,15 +102,36 @@ export function evaluate(track, state, performance, equipment, performedAt = new
 
   const base = { ...state, levelIndex, lastPerformedAt: performedAt }
 
+  // Optional effort per set, as reps in reserve (0 = nothing left, 3 = 3 or more).
+  const rated = sets.every((s) => Number.isInteger(s.rir))
+  const allEasy = rated && sets.every((s) => s.rir >= EASY_RIR)
+  const toFailure = sets.filter((s) => s.rir === 0).length
+
   if (track.type === 'weighted') {
     const weights = weightsForLevel(level, equipment)
     // Progress from the lightest weight used, so one heavy set never
     // pushes the next prescription above what you proved on every set.
     const used = roundDownToAvailable(Math.min(...sets.map((s) => s.weight ?? 0)), weights)
 
+    if (hitTop && toFailure >= GRIND_SETS) {
+      return {
+        state: { ...base, weight: used, missStreak: 0 },
+        outcome: 'repeat',
+        message: `You reached ${high}${unit} but ${toFailure} sets went to failure. Repeat ${used} kg once more to own it with a rep in reserve.`,
+      }
+    }
+
     if (hitTop) {
       const up = nextWeightUp(used, weights)
       if (up !== null) {
+        const twoUp = allEasy ? nextWeightUp(up, weights) : null
+        if (twoUp !== null) {
+          return {
+            state: { ...base, weight: twoUp, missStreak: 0 },
+            outcome: 'increase-weight',
+            message: `All sets hit ${high}${unit} and felt easy. Jumping two steps: next time ${twoUp} kg.`,
+          }
+        }
         return {
           state: { ...base, weight: up, missStreak: 0 },
           outcome: 'increase-weight',
@@ -149,6 +175,13 @@ export function evaluate(track, state, performance, equipment, performedAt = new
   }
 
   // Bodyweight reps and holds.
+  if (hitTop && toFailure >= GRIND_SETS) {
+    return {
+      state: { ...base, missStreak: 0 },
+      outcome: 'repeat',
+      message: `You reached ${high}${unit} but ${toFailure} sets went to failure. Repeat this level once more before moving up.`,
+    }
+  }
   if (hitTop) return advanceLevel(track, base, levelIndex, null, equipment)
 
   if (missed) {

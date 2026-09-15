@@ -7,6 +7,8 @@ import { cardioSessionFor, logCardio } from '../logic/state.js'
 import { useNow } from '../components/useNow.js'
 import { alertChange, alertDone, keepScreenOn, releaseScreen, unlockAudio } from '../lib/alerts.js'
 import { formatClock, formatMinutes } from '../lib/format.js'
+import { heartZones, targetZonesFor, zoneRangeText } from '../logic/heart.js'
+import { ageFromBirthYear } from '../logic/nutrition.js'
 
 const TIMER_KEY = 'forge:cardio-timer'
 const KIND_LABEL = { walk: 'Walk', jog: 'Jog', hard: 'Hard' }
@@ -66,6 +68,10 @@ export default function Cardio() {
   const [effort, setEffort] = useState(null)
   const [distance, setDistance] = useState('')
   const [notes, setNotes] = useState('')
+  const [avgHr, setAvgHr] = useState('')
+  const [maxHr, setMaxHr] = useState('')
+  const zones = heartZones(state.heart, ageFromBirthYear(state.profile.birthYear))
+  const zoneText = (segKind) => zoneRangeText(zones, targetZonesFor(segKind, session.id))
   const [elapsedAtStop, setElapsedAtStop] = useState(0)
   const [error, setError] = useState(null)
   const [result, setResult] = useState(null)
@@ -149,6 +155,8 @@ export default function Cardio() {
           jogSpeed: kind === 'plan' ? Number(jogSpeed) : s.cardio.jogSpeed,
           elapsedSeconds: elapsedAtStop,
           distanceMiles: distance,
+          avgHr,
+          maxHr,
           notes,
         })
         rec = r.record
@@ -231,7 +239,20 @@ export default function Cardio() {
               Distance (miles, optional)
               <input className="input" type="number" inputMode="decimal" step="0.01" min="0" value={distance} onChange={(e) => setDistance(e.target.value)} />
             </label>
+            <label className="field">
+              Avg heart rate (bpm)
+              <input className="input" type="number" inputMode="numeric" min="40" max="230" value={avgHr} onChange={(e) => setAvgHr(e.target.value)} placeholder="from watch" />
+            </label>
+            <label className="field">
+              Max heart rate (bpm)
+              <input className="input" type="number" inputMode="numeric" min="40" max="230" value={maxHr} onChange={(e) => setMaxHr(e.target.value)} placeholder="from watch" />
+            </label>
           </div>
+          {zones && avgHr && Number(avgHr) > 0 && (
+            <p className="hint">
+              Average {avgHr} bpm is Zone {zones.zones.findLast((z) => Number(avgHr) >= z.loBpm)?.zone ?? 'below 1'} for you.
+            </p>
+          )}
           <label className="field">
             Notes (optional)
             <textarea className="input" rows={2} maxLength={500} value={notes} onChange={(e) => setNotes(e.target.value)} />
@@ -270,6 +291,7 @@ export default function Cardio() {
             Set treadmill to {speedOf(seg.kind, timer.walkSpeed, timer.jogSpeed)} mph
             {!isPlan ? ' · 5–8% incline' : ' · 1% incline'}
           </span>
+          {zoneText(seg.kind) && <span className="small text-2">Heart rate target: {zoneText(seg.kind)}</span>}
           <div className="progress" style={{ marginTop: 8 }} aria-label="Session progress">
             <span style={{ width: `${Math.min(100, (elapsed / total) * 100)}%` }} />
           </div>

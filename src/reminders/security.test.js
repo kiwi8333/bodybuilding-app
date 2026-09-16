@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
-import { MAX_RECORDS, MAX_SIGNUPS_PER_WINDOW, STALE_DAYS, handleSubscribe } from '../../api/_lib/handlers.js'
+import { MAX_PER_NETWORK, MAX_RECORDS, STALE_DAYS, handleSubscribe, handleUnsubscribe } from '../../api/_lib/handlers.js'
 import { MAX_PER_WINDOW, WINDOW_MS, allowRequest, clientIp } from '../../api/_lib/rateLimit.js'
 import { randomToken, seal, toB64u } from './crypto.js'
 import { completeOnboarding, createInitialState, finishWorkout, normalizeState, startWorkout, updateSet } from '../logic/state.js'
@@ -118,53 +118,38 @@ describe('shipped policies', () => {
   })
 })
 
-describe('durable signup allowance', () => {
-  function memoryKv(initial = {}) {
-    let value = initial
-    return {
-      get value() {
-        return value
-      },
-      async read() {
-        return value
-      },
-      async update(fn) {
-        value = fn(value)
-        return value
-      },
-    }
-  }
-
-  it('limits new devices per network per day, then allows again later', async () => {
+describe('one network cannot fill the list', () => {
+  it('holds at most a few entries at once, and frees a slot when one is removed', async () => {
     const sealed = await sample()
     const store = memoryStore()
-    const signupStore = memoryKv()
-    const day0 = new Date('2026-09-16T09:00:00Z')
-    for (let i = 0; i < MAX_SIGNUPS_PER_WINDOW; i++) {
-      await handleSubscribe(store, { id: idAt(i), token: randomToken(), sealed }, day0, { signupStore, ip: '203.0.113.9' })
+    const now = new Date('2026-09-16T09:00:00Z')
+    const ip = '203.0.113.9'
+    const tokens = []
+    for (let i = 0; i < MAX_PER_NETWORK; i++) {
+      const token = randomToken()
+      tokens.push(token)
+      await handleSubscribe(store, { id: idAt(i), token, sealed }, now, { ip })
     }
-    await expect(
-      handleSubscribe(store, { id: idAt(50), token: randomToken(), sealed }, day0, { signupStore, ip: '203.0.113.9' }),
-    ).rejects.toMatchObject({ status: 429 })
-    // A different network is unaffected, and the same one is fine the next day.
-    await handleSubscribe(store, { id: idAt(51), token: randomToken(), sealed }, day0, { signupStore, ip: '198.51.100.4' })
-    const nextDay = new Date(day0.getTime() + 25 * 60 * 60 * 1000)
-    await handleSubscribe(store, { id: idAt(52), token: randomToken(), sealed }, nextDay, { signupStore, ip: '203.0.113.9' })
-    expect(store.records).toHaveLength(MAX_SIGNUPS_PER_WINDOW + 2)
+    await expect(handleSubscribe(store, { id: idAt(50), token: randomToken(), sealed }, now, { ip })).rejects.toMatchObject({ status: 429 })
+    // Another network is unaffected.
+    await handleSubscribe(store, { id: idAt(51), token: randomToken(), sealed }, now, { ip: '198.51.100.4' })
+    // Removing one frees the slot straight away.
+    await handleUnsubscribe(store, { id: idAt(0), token: tokens[0] })
+    await handleSubscribe(store, { id: idAt(52), token: randomToken(), sealed }, now, { ip })
+    expect(store.records.filter((r) => r.id === idAt(52))).toHaveLength(1)
   })
 
-  it('stores only hashed addresses, and never blocks a phone updating its own entry', async () => {
+  it('never limits a phone updating its own entry, and stores no raw address', async () => {
     const sealed = await sample()
     const store = memoryStore()
-    const signupStore = memoryKv()
     const now = new Date('2026-09-16T09:00:00Z')
     const token = randomToken()
-    await handleSubscribe(store, { id: idAt(1), token, sealed }, now, { signupStore, ip: '203.0.113.9' })
-    for (let i = 0; i < MAX_SIGNUPS_PER_WINDOW + 3; i++) {
-      const r = await handleSubscribe(store, { id: idAt(1), token, sealed }, now, { signupStore, ip: '203.0.113.9' })
-      expect(r.status).toBe(200)
+    const ip = '203.0.113.9'
+    await handleSubscribe(store, { id: idAt(1), token, sealed }, now, { ip })
+    for (let i = 0; i < MAX_PER_NETWORK + 3; i++) {
+      expect((await handleSubscribe(store, { id: idAt(1), token, sealed }, now, { ip })).status).toBe(200)
     }
-    expect(JSON.stringify(signupStore.value)).not.toContain('203.0.113.9')
-    expect(Object.keys(signupStore.value)[0]).toMatch(/^[0-9a-f]{16}$/)
+    expect(JSON.stringify(store.records)).not.toContain(ip)
+    expect(store.records[0].ipHash).toMatch(/^[0-9a-f]{16}$/)
   })
 })

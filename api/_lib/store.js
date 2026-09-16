@@ -46,7 +46,3 @@ function jsonBlob(pathname, empty, coerce = (v) => v) {
 }
 
 export const blobStore = jsonBlob('forge-reminders.json', () => [], (v) => (Array.isArray(v) ? v : []))
-
-// How many new devices each network address has registered recently. Kept
-// apart from the reminder records so the sender never reads it.
-export const signupStore = jsonBlob('forge-signups.json', () => ({}), (v) => (v && typeof v === 'object' && !Array.isArray(v) ? v : {}))

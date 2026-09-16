@@ -13,9 +13,8 @@ export const MAX_RECORDS = 25
 // this long is from a device that is gone (or junk) and may be evicted to make
 // room for a real one.
 export const STALE_DAYS = 45
-// New devices one network address may register per day.
-export const MAX_SIGNUPS_PER_WINDOW = 5
-export const SIGNUP_WINDOW_MS = 24 * 60 * 60 * 1000
+// Entries one network may hold at once (a phone re-registering reuses its own).
+export const MAX_PER_NETWORK = 5
 export const MAX_BODY_BYTES = 8192
 export const SIGNATURE_MAX_AGE_MS = 5 * 60 * 1000
 
@@ -53,43 +52,13 @@ function checkSealed(sealed) {
   return { v: 1, epk: sealed.epk, iv: sealed.iv, ct: sealed.ct }
 }
 
-/**
- * Durable limit on *creating* entries, which is the only way the list can be
- * filled. Updates from a phone that already holds the entry's token are never
- * limited. Addresses are stored hashed, and old entries are dropped.
- */
-export async function checkSignupAllowance(signupStore, ip, now) {
-  if (!signupStore) return
-  const key = sha256(String(ip)).slice(0, 16)
-  const cutoff = now.getTime() - SIGNUP_WINDOW_MS
-  let allowed = true
-  await signupStore.update((seen) => {
-    const next = {}
-    for (const [k, times] of Object.entries(seen)) {
-      const recent = (Array.isArray(times) ? times : []).filter((t) => Number.isFinite(t) && t > cutoff)
-      if (recent.length) next[k] = recent.slice(-MAX_SIGNUPS_PER_WINDOW)
-    }
-    const mine = next[key] ?? []
-    if (mine.length >= MAX_SIGNUPS_PER_WINDOW) {
-      allowed = false
-      return next
-    }
-    next[key] = [...mine, now.getTime()]
-    return next
-  })
-  if (!allowed) throw new HttpError(429, 'Too many new devices from this network today')
-}
-
-export async function handleSubscribe(store, body, now = new Date(), { signupStore, ip } = {}) {
+export async function handleSubscribe(store, body, now = new Date(), { ip } = {}) {
   const { id, token } = body ?? {}
   if (!ID_RE.test(id ?? '') || !TOKEN_RE.test(token ?? '')) throw new HttpError(400, 'Invalid id or token')
   const sealed = checkSealed(body.sealed)
   const tokenHash = sha256(token)
-  const existingRecords = signupStore ? await store.read() : null
-  // Only a genuinely new device counts against the daily allowance.
-  if (existingRecords && !existingRecords.some((r) => r.id === id)) {
-    await checkSignupAllowance(signupStore, ip, now)
-  }
+  // Hashed so the stored data never contains a network address.
+  const ipHash = ip ? sha256(String(ip)).slice(0, 16) : null
   let status = 201
   await store.update((records) => {
     const existing = records.find((r) => r.id === id)
@@ -105,8 +74,13 @@ export async function handleSubscribe(store, body, now = new Date(), { signupSto
       const cutoff = now.getTime() - STALE_DAYS * 24 * 60 * 60 * 1000
       kept = kept.filter((r) => Date.parse(r.updatedAt ?? 0) >= cutoff)
     }
+    // One network can hold only a handful of entries at a time, so nobody can
+    // fill the list. Removing an entry frees its slot immediately.
+    if (ipHash && kept.filter((r) => r.ipHash === ipHash).length >= MAX_PER_NETWORK) {
+      throw new HttpError(429, 'Too many devices registered from this network')
+    }
     if (kept.length >= MAX_RECORDS) throw new HttpError(409, 'Reminder list is full')
-    return [...kept, { id, tokenHash, sealed, lastSent: {}, updatedAt: now.toISOString() }]
+    return [...kept, { id, tokenHash, ipHash, sealed, lastSent: {}, updatedAt: now.toISOString() }]
   })
   return { status, body: { ok: true } }
 }

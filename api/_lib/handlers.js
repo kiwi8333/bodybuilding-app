@@ -9,6 +9,10 @@
 import { createHash, createPublicKey, timingSafeEqual, verify } from 'node:crypto'
 
 export const MAX_RECORDS = 25
+// A phone re-syncs its reminder data at least daily, so anything untouched for
+// this long is from a device that is gone (or junk) and may be evicted to make
+// room for a real one.
+export const STALE_DAYS = 45
 export const MAX_BODY_BYTES = 8192
 export const SIGNATURE_MAX_AGE_MS = 5 * 60 * 1000
 
@@ -59,8 +63,15 @@ export async function handleSubscribe(store, body, now = new Date()) {
       status = 200
       return records.map((r) => (r.id === id ? { ...r, sealed, updatedAt: now.toISOString() } : r))
     }
-    if (records.length >= MAX_RECORDS) throw new HttpError(409, 'Reminder list is full')
-    return [...records, { id, tokenHash, sealed, lastSent: {}, updatedAt: now.toISOString() }]
+    // When full, drop devices that stopped syncing long ago so a real phone
+    // can always register.
+    let kept = records
+    if (kept.length >= MAX_RECORDS) {
+      const cutoff = now.getTime() - STALE_DAYS * 24 * 60 * 60 * 1000
+      kept = kept.filter((r) => Date.parse(r.updatedAt ?? 0) >= cutoff)
+    }
+    if (kept.length >= MAX_RECORDS) throw new HttpError(409, 'Reminder list is full')
+    return [...kept, { id, tokenHash, sealed, lastSent: {}, updatedAt: now.toISOString() }]
   })
   return { status, body: { ok: true } }
 }

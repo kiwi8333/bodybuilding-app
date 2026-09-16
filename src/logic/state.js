@@ -814,6 +814,23 @@ function checkExerciseCommon(ex, p) {
   return track
 }
 
+// The target is shown on screen and drives the set rows, so restrict it to
+// plain numbers (and an optional note) rather than trusting the file.
+function checkTarget(target, p) {
+  const out = {}
+  for (const [key, max] of [['sets', 20], ['low', 600], ['high', 600]]) {
+    const v = target[key]
+    if (!Number.isInteger(v) || v < 0 || v > max) fail(`${p}.target.${key}`, 'invalid')
+    out[key] = v
+  }
+  if (target.weight !== null && target.weight !== undefined && (!isNum(target.weight) || target.weight < 0 || target.weight > 500)) {
+    fail(`${p}.target.weight`, 'invalid')
+  }
+  out.weight = target.weight ?? null
+  out.note = isStr(target.note) ? target.note.slice(0, 300) : null
+  return out
+}
+
 function checkActiveWorkout(aw) {
   const p = 'activeWorkout'
   if (!isObj(aw)) fail(p, 'not an object')
@@ -833,7 +850,7 @@ function checkActiveWorkout(aw) {
         trackId: ex.trackId,
         levelIndex: ex.levelIndex,
         swapId: checkSwapId(ex, ep),
-        target: { ...ex.target },
+        target: checkTarget(ex.target, ep),
         sets: ex.sets.map((s, j) => checkSet(s, `${ep}.sets[${j}]`, { requireDone: false })),
       }
     }),
@@ -859,7 +876,7 @@ function checkWorkoutRecord(w, p) {
         levelName: isStr(ex.levelName) ? ex.levelName : track.levels[ex.levelIndex].name,
         swapId: checkSwapId(ex, ep),
         type: track.type,
-        target: { ...ex.target },
+        target: checkTarget(ex.target, ep),
         sets: ex.sets.map((s, j) => checkSet(s, `${ep}.sets[${j}]`, { requireDone: true })),
         outcome: isStr(ex.outcome) ? ex.outcome : '',
         message: isStr(ex.message) ? ex.message : '',

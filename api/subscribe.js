@@ -1,5 +1,5 @@
 import { applyCors, handleSubscribe, readRawBody, sendError, HttpError } from './_lib/handlers.js'
-import { blobStore } from './_lib/store.js'
+import { blobStore, signupStore } from './_lib/store.js'
 import { allowRequest, clientIp } from './_lib/rateLimit.js'
 
 export default async function handler(req, res) {
@@ -15,7 +15,7 @@ export default async function handler(req, res) {
       if (err instanceof HttpError) throw err
       throw new HttpError(400, 'Invalid JSON')
     }
-    const result = await handleSubscribe(blobStore, body)
+    const result = await handleSubscribe(blobStore, body, new Date(), { signupStore, ip: clientIp(req) })
     res.status(result.status).json(result.body)
   } catch (err) {
     sendError(res, err)

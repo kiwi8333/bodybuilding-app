@@ -13,6 +13,9 @@ export const MAX_RECORDS = 25
 // this long is from a device that is gone (or junk) and may be evicted to make
 // room for a real one.
 export const STALE_DAYS = 45
+// New devices one network address may register per day.
+export const MAX_SIGNUPS_PER_WINDOW = 5
+export const SIGNUP_WINDOW_MS = 24 * 60 * 60 * 1000
 export const MAX_BODY_BYTES = 8192
 export const SIGNATURE_MAX_AGE_MS = 5 * 60 * 1000
 
@@ -50,11 +53,43 @@ function checkSealed(sealed) {
   return { v: 1, epk: sealed.epk, iv: sealed.iv, ct: sealed.ct }
 }
 
-export async function handleSubscribe(store, body, now = new Date()) {
+/**
+ * Durable limit on *creating* entries, which is the only way the list can be
+ * filled. Updates from a phone that already holds the entry's token are never
+ * limited. Addresses are stored hashed, and old entries are dropped.
+ */
+export async function checkSignupAllowance(signupStore, ip, now) {
+  if (!signupStore) return
+  const key = sha256(String(ip)).slice(0, 16)
+  const cutoff = now.getTime() - SIGNUP_WINDOW_MS
+  let allowed = true
+  await signupStore.update((seen) => {
+    const next = {}
+    for (const [k, times] of Object.entries(seen)) {
+      const recent = (Array.isArray(times) ? times : []).filter((t) => Number.isFinite(t) && t > cutoff)
+      if (recent.length) next[k] = recent.slice(-MAX_SIGNUPS_PER_WINDOW)
+    }
+    const mine = next[key] ?? []
+    if (mine.length >= MAX_SIGNUPS_PER_WINDOW) {
+      allowed = false
+      return next
+    }
+    next[key] = [...mine, now.getTime()]
+    return next
+  })
+  if (!allowed) throw new HttpError(429, 'Too many new devices from this network today')
+}
+
+export async function handleSubscribe(store, body, now = new Date(), { signupStore, ip } = {}) {
   const { id, token } = body ?? {}
   if (!ID_RE.test(id ?? '') || !TOKEN_RE.test(token ?? '')) throw new HttpError(400, 'Invalid id or token')
   const sealed = checkSealed(body.sealed)
   const tokenHash = sha256(token)
+  const existingRecords = signupStore ? await store.read() : null
+  // Only a genuinely new device counts against the daily allowance.
+  if (existingRecords && !existingRecords.some((r) => r.id === id)) {
+    await checkSignupAllowance(signupStore, ip, now)
+  }
   let status = 201
   await store.update((records) => {
     const existing = records.find((r) => r.id === id)

@@ -1,9 +1,8 @@
-// Best-effort per-IP rate limit for the public endpoints. Vercel functions are
-// short-lived, so this only remembers recent requests within one instance;
-// it stops casual spam and scripted floods without any storage writes. The
-// real protection against filling the list is the record cap plus stale
-// eviction in handlers.js.
-
+// Cheap in-process throttle for the public endpoints. Each Vercel invocation
+// may run in a fresh instance, so this only catches bursts that happen to land
+// on the same warm instance: treat it as a speed bump, not a guarantee. The
+// real protections are the durable per-network signup allowance and the record
+// cap with stale eviction (handlers.js), which survive across instances.
 export const WINDOW_MS = 60_000
 export const MAX_PER_WINDOW = 20
 const MAX_TRACKED_IPS = 5000

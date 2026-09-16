@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
-import { MAX_RECORDS, STALE_DAYS, handleSubscribe } from '../../api/_lib/handlers.js'
+import { MAX_RECORDS, MAX_SIGNUPS_PER_WINDOW, STALE_DAYS, handleSubscribe } from '../../api/_lib/handlers.js'
 import { MAX_PER_WINDOW, WINDOW_MS, allowRequest, clientIp } from '../../api/_lib/rateLimit.js'
 import { randomToken, seal, toB64u } from './crypto.js'
 import { completeOnboarding, createInitialState, finishWorkout, normalizeState, startWorkout, updateSet } from '../logic/state.js'
@@ -115,5 +115,56 @@ describe('shipped policies', () => {
     expect(csp).toContain("object-src 'none'")
     expect(csp).toContain("connect-src 'self' https://bodybuilding-app-pied.vercel.app")
     expect(csp).toContain("base-uri 'self'")
+  })
+})
+
+describe('durable signup allowance', () => {
+  function memoryKv(initial = {}) {
+    let value = initial
+    return {
+      get value() {
+        return value
+      },
+      async read() {
+        return value
+      },
+      async update(fn) {
+        value = fn(value)
+        return value
+      },
+    }
+  }
+
+  it('limits new devices per network per day, then allows again later', async () => {
+    const sealed = await sample()
+    const store = memoryStore()
+    const signupStore = memoryKv()
+    const day0 = new Date('2026-09-16T09:00:00Z')
+    for (let i = 0; i < MAX_SIGNUPS_PER_WINDOW; i++) {
+      await handleSubscribe(store, { id: idAt(i), token: randomToken(), sealed }, day0, { signupStore, ip: '203.0.113.9' })
+    }
+    await expect(
+      handleSubscribe(store, { id: idAt(50), token: randomToken(), sealed }, day0, { signupStore, ip: '203.0.113.9' }),
+    ).rejects.toMatchObject({ status: 429 })
+    // A different network is unaffected, and the same one is fine the next day.
+    await handleSubscribe(store, { id: idAt(51), token: randomToken(), sealed }, day0, { signupStore, ip: '198.51.100.4' })
+    const nextDay = new Date(day0.getTime() + 25 * 60 * 60 * 1000)
+    await handleSubscribe(store, { id: idAt(52), token: randomToken(), sealed }, nextDay, { signupStore, ip: '203.0.113.9' })
+    expect(store.records).toHaveLength(MAX_SIGNUPS_PER_WINDOW + 2)
+  })
+
+  it('stores only hashed addresses, and never blocks a phone updating its own entry', async () => {
+    const sealed = await sample()
+    const store = memoryStore()
+    const signupStore = memoryKv()
+    const now = new Date('2026-09-16T09:00:00Z')
+    const token = randomToken()
+    await handleSubscribe(store, { id: idAt(1), token, sealed }, now, { signupStore, ip: '203.0.113.9' })
+    for (let i = 0; i < MAX_SIGNUPS_PER_WINDOW + 3; i++) {
+      const r = await handleSubscribe(store, { id: idAt(1), token, sealed }, now, { signupStore, ip: '203.0.113.9' })
+      expect(r.status).toBe(200)
+    }
+    expect(JSON.stringify(signupStore.value)).not.toContain('203.0.113.9')
+    expect(Object.keys(signupStore.value)[0]).toMatch(/^[0-9a-f]{16}$/)
   })
 })

@@ -5,16 +5,12 @@ import { MOBILITY_ROUTINE } from '../data/mobility.js'
 import { TEMPO, repPhases, repSeconds, tempoText } from '../data/tempo.js'
 import { BONES, FLOOR_Y, VIEWBOX, circleIntersectUpper, dist, skeleton, solveTwoBone } from './rig.js'
 import { hasMovement, movementFor } from './movements.js'
-import { buildTimeline, frameAt, verticalBounds } from './timeline.js'
+import { buildTimeline, frameAt, propTop, verticalBounds } from './timeline.js'
 
-// Levels with their own demo. Gym levels either share one (`demo`) or have no
-// animation; they are checked separately below.
-const LEVELS_ONLY = Object.values(TRACKS)
-  .filter((t) => t.location !== 'gym')
-  .flatMap((t) => t.levels.map((l) => ({ track: t, level: l })))
-const GYM_LEVELS = Object.values(TRACKS)
-  .filter((t) => t.location === 'gym')
-  .flatMap((t) => t.levels)
+// Levels with their own demo. Levels that share one (`demo`) are checked
+// separately below.
+const LEVELS_ONLY = Object.values(TRACKS).flatMap((t) => t.levels.filter((l) => l.demo === undefined).map((l) => ({ track: t, level: l })))
+const SHARED_DEMO_LEVELS = Object.values(TRACKS).flatMap((t) => t.levels.filter((l) => l.demo !== undefined))
 // Every animated demo: exercise levels, swaps with their own movement, and mobility.
 const EXTRA_IDS = [
   ...Object.values(SWAPS).flat().map(swapDemoId),
@@ -62,21 +58,21 @@ describe('tempo data', () => {
     }
   })
 
-  it('gym levels have readable tempo text and only share demos that exist', () => {
-    for (const level of GYM_LEVELS) {
-      expect(TEMPO[levelDemoId(level)], level.id).toBeDefined()
-      expect(tempoText(levelDemoId(level)).length, level.id).toBeGreaterThan(3)
-      if (level.demo !== undefined) {
-        expect(hasMovement(level.demo), level.id).toBe(true)
-        expect(TEMPO[level.id], `${level.id} uses its demo's tempo`).toBeUndefined()
-      } else {
-        expect(hasMovement(level.id), `${level.id} has no animation of its own`).toBe(false)
-      }
+  it('every exercise level has an animated demo', () => {
+    for (const track of Object.values(TRACKS)) {
+      for (const level of track.levels) expect(hasMovement(levelDemoId(level)), level.id).toBe(true)
+    }
+  })
+
+  it('levels that share a demo use its tempo too', () => {
+    for (const level of SHARED_DEMO_LEVELS) {
+      expect(TEMPO[level.demo], level.id).toBeDefined()
+      expect(TEMPO[level.id], `${level.id} uses its demo's tempo`).toBeUndefined()
     }
   })
 
   it('has no tempo entries for levels that do not exist', () => {
-    const ids = new Set([...ALL_LEVELS.map(({ level }) => level.id), ...GYM_LEVELS.map((l) => l.id)])
+    const ids = new Set(ALL_LEVELS.map(({ level }) => level.id))
     for (const id of Object.keys(TEMPO)) expect(ids.has(id), id).toBe(true)
   })
 
@@ -187,8 +183,7 @@ describe('exercise demos', () => {
         expect(Math.min(sk.wristN[1], sk.wristF[1]) - 4.5, `${level.id} dumbbell cropped`).toBeGreaterThanOrEqual(y)
       }
       for (const prop of tl.movement.props) {
-        const propTop = prop.type === 'chair' ? prop.seatY - 26 : prop.type === 'sofa' ? prop.topY - 18 : prop.topY - 3
-        expect(propTop, `${level.id} prop cropped`).toBeGreaterThanOrEqual(y)
+        expect(propTop(prop), `${level.id} prop cropped`).toBeGreaterThanOrEqual(y)
       }
     }
   })

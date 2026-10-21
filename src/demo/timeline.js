@@ -52,16 +52,20 @@ export function verticalBounds(timeline, { skeleton, FLOOR_Y, VIEWBOX, headRadiu
       top = Math.min(top, p[1] - reach)
     }
   }
-  for (const prop of timeline.movement.props) {
-    if (prop.type === 'chair') top = Math.min(top, prop.seatY - 26)
-    if (prop.type === 'sofa') top = Math.min(top, prop.topY - 18)
-    if (prop.type === 'counter') top = Math.min(top, prop.topY - 3)
-  }
+  for (const prop of timeline.movement.props) top = Math.min(top, propTop(prop))
   const bottom = FLOOR_Y + 4
   const y = Math.max(VIEWBOX.y, Math.floor(top - 8))
   // Keep at least a 2:1 frame so wide floor exercises don't become slivers.
   const h = Math.max(bottom - y, VIEWBOX.w / 2)
   return { y: Math.min(y, bottom - h), h }
+}
+
+// Highest point a prop draws.
+export function propTop(prop) {
+  if (prop.type === 'chair') return prop.seatY - 26
+  if (prop.type === 'sofa') return prop.topY - 18
+  if (prop.type === 'counter') return prop.topY - 3
+  return prop.topY
 }
 
 // Pose and caption at time t (seconds, any value; loops).

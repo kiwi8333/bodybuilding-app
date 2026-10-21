@@ -3,7 +3,7 @@
 // planks), the props it needs, and the words shown during each phase.
 // Timing comes from data/tempo.js.
 
-import { LEG, BONES, blendPoses, circleIntersectUpper, straightBody } from './rig.js'
+import { LEG, BONES, add, blendPoses, circleIntersectUpper, dir, straightBody } from './rig.js'
 
 // ---------- Shared building blocks ----------
 
@@ -415,6 +415,212 @@ function partialLateralRaise() {
   }
 }
 
+// ---------- Gym movements ----------
+//
+// Gym equipment is drawn as a 'frame' prop: thick strokes for benches, pads,
+// columns and rails. Pose extras drawn with the figure:
+//   bar: 'hands'  – a barbell seen end-on (a plate) at the hands
+//   cable: [x, y] – a cable from that pulley to the hands; handle: true adds the grip
+//   sled: [nx, ny] – a leg press platform under the near foot, facing that way
+//   roller: true  – a leg curl ankle pad behind the near ankle
+
+// lines: [[x1, y1, x2, y2, width], ...]
+function frame(lines) {
+  const topY = Math.min(...lines.map(([, y1, , y2, w]) => Math.min(y1, y2) - w / 2))
+  return { type: 'frame', lines, topY }
+}
+
+// A pad lying along the torso, `gap` below the body line (benches, seat backs).
+function padUnder(hip, torso, from, to, gap = 6) {
+  const d = dir(torso)
+  const n = dir(torso + (torso < 0 ? -90 : 90))
+  return [...add(add(hip, d, from), n, gap), ...add(add(hip, d, to), n, gap)]
+}
+
+const pair = (hand, dx = -2) => ({ handN: hand, handF: [hand[0] + dx, hand[1]] })
+
+function backSquat() {
+  // The bar sits on the upper back, just behind the shoulder; the hands hold it there.
+  const pose = (hip, torso, knee) => {
+    const bar = add(add(hip, dir(torso), BONES.torso - 1), dir(torso - 90), 4.5)
+    return { ...STAND, hip, torso, knee, ...pair(bar, -1), elbow: [-1, 1], bar: 'hands' }
+  }
+  return {
+    props: [],
+    labels: { lower: 'Brace, sit down between your heels', pause: 'Hold the bottom, stay tight', lift: 'Drive up, chest and hips together' },
+    poses: withHalf({ top: pose([78, 57], 6, [1, -0.2]), bottom: pose([62, 86], 40, [1, -0.4]) }),
+  }
+}
+
+function benchPress() {
+  const body = { hip: [70, 85], torso: -90, head: -90, footN: [98, 107], footF: [95, 107], knee: [0, -1], bar: 'hands' }
+  return {
+    props: [frame([[18, 91, 88, 91, 5], [24, 93, 24, 110, 3], [82, 93, 82, 110, 3]])],
+    labels: { lower: 'Lower the bar to your lower chest', pause: 'Bar on the chest, stay tight', lift: 'Press back up over your shoulders' },
+    poses: withHalf({
+      top: { ...body, ...pair([40, 53], -1), elbow: [1, 0.4] },
+      bottom: { ...body, ...pair([47, 75], -1), elbow: [0.3, 1] },
+    }),
+  }
+}
+
+function latPulldown() {
+  const body = { hip: [70, 78], torso: -8, footN: [96, 107], footF: [93, 107], knee: [1, -0.3], cable: [71, -8], handle: true }
+  return {
+    props: [
+      frame([
+        [44, -10, 44, 110, 5],
+        [44, -10, 74, -10, 4],
+        [56, 84, 82, 84, 5],
+        [68, 86, 68, 110, 3],
+        [86, 73, 94, 73, 5],
+      ]),
+    ],
+    labels: { lift: 'Pull the bar to your upper chest, elbows down', lower: 'Let the bar rise to straight arms' },
+    poses: withHalf({
+      bottom: { ...body, ...pair([70, 14], -1), elbow: [-1, -0.2] },
+      top: { ...body, ...pair([73, 42], -1), elbow: [-0.4, 1] },
+    }),
+  }
+}
+
+function barbellRdl() {
+  const { poses, labels } = rdl({ stance: 'both' })
+  const withBar = (p) => ({ ...p, db: undefined, bar: 'hands' })
+  return {
+    props: [],
+    labels: { ...labels, lower: 'Push hips back, slide the bar down your legs' },
+    poses: withHalf({ top: withBar(poses.top), bottom: withBar(poses.bottom) }),
+  }
+}
+
+function tricepsPushdown() {
+  const body = { ...STAND, torso: 6, cable: [104, -8], handle: true }
+  return {
+    props: [frame([[110, -10, 110, 110, 6], [110, -10, 104, -10, 4]])],
+    labels: { lift: 'Push down to straight arms', lower: 'Let your forearms rise, elbows still' },
+    poses: withHalf({
+      bottom: { ...body, ...pair([95, 38], -1), elbow: [-1, 1] },
+      top: { ...body, ...pair([88, 56], -1), elbow: [-1, 0.2] },
+    }),
+  }
+}
+
+// Knee and leg raises. support: 'chair' (forearms on pads) or 'bar' (hanging).
+function legRaise({ support, straight }) {
+  const chair = support === 'chair'
+  const hip = chair ? [80, 50] : [80, 46]
+  const base = {
+    hip,
+    torso: 0,
+    head: 0,
+    ...(chair ? { ...pair([97, 33]), elbow: [-0.2, 1] } : { ...pair([81, -14]), elbow: [0, -1] }),
+    space: { handN: 'world', handF: 'world', footN: 'hip', footF: 'hip' },
+  }
+  const hang = { footN: [hip[0] + 1, hip[1] + 51], footF: [hip[0] - 1, hip[1] + 51], knee: [1, 0], toe: 160 }
+  const raised = straight
+    ? { footN: [130.4, 53.6], footF: [128.4, 53.6], knee: [0, -1], toe: 60 }
+    : { footN: [hip[0] + 21, hip[1] + 24], footF: [hip[0] + 19, hip[1] + 24], knee: [1, -1], toe: 160 }
+  const props = chair
+    ? [frame([[72, 8, 72, 62, 6], [76, 37, 100, 37, 4], [70, 62, 70, 110, 3], [102, 37, 102, 110, 3]])]
+    : [frame([[48, -16, 48, 110, 5], [48, -14, 84, -14, 3]])]
+  return {
+    props,
+    labels: {
+      lift: straight ? 'Raise straight legs to hip height' : 'Curl your knees up towards your chest',
+      lower: 'Lower slowly, no swinging',
+    },
+    poses: withHalf({ bottom: { ...base, ...hang }, top: { ...base, ...raised, torso: -4 } }),
+  }
+}
+
+function legPress() {
+  const hip = [60, 92]
+  const torso = -52
+  const press = [Math.SQRT1_2, -Math.SQRT1_2]
+  const base = { hip, torso, head: torso, ...pair([62, 88]), elbow: [0, 1], knee: [-0.3, -1], toe: -45, sled: press, space: { handN: 'world', handF: 'world' } }
+  return {
+    props: [
+      frame([
+        padUnder(hip, torso, -4, 44).concat(5),
+        [30, 78, 30, 110, 3],
+        [58, 101, 58, 110, 3],
+        [70, 96, 118, 48, 3],
+      ]),
+    ],
+    labels: { lower: 'Lower until your knees come towards your chest', lift: 'Press through your whole foot, knees soft' },
+    poses: withHalf({
+      top: { ...base, footN: [94, 56], footF: [92, 56] },
+      bottom: { ...base, footN: [78, 72], footF: [76, 72] },
+    }),
+  }
+}
+
+function inclinePress() {
+  const hip = [68, 84]
+  const torso = -60
+  const body = { hip, torso, head: torso, footN: [94, 107], footF: [91, 107], knee: [0.3, -1], elbow: [0.3, 1], db: 'hands' }
+  return {
+    props: [frame([padUnder(hip, torso, -4, 44).concat(5), [60, 91, 84, 91, 5], [34, 73, 34, 110, 3], [76, 93, 76, 110, 3]])],
+    labels: { lower: 'Lower to a stretch across your chest', lift: 'Press up and slightly in' },
+    poses: withHalf({ top: { ...body, ...pair([45, 36]) }, bottom: { ...body, ...pair([50, 60]) } }),
+  }
+}
+
+function seatedShoulderPress() {
+  const body = { hip: [80, 80], torso: 0, footN: [100, 107], footF: [97, 107], knee: [1, -0.2], elbow: [0.2, 1], db: 'hands' }
+  return {
+    props: [frame([[64, 86, 90, 86, 5], [73, 30, 73, 84, 5], [66, 88, 66, 110, 3], [88, 88, 88, 110, 3]])],
+    labels: { lift: 'Press up until your arms are straight', lower: 'Lower to about ear height' },
+    poses: withHalf({ bottom: { ...body, ...pair([87, 50]) }, top: { ...body, ...pair([82, 16]) } }),
+  }
+}
+
+function seatedCableRow() {
+  const body = { hip: [56, 94], footN: [104, 96], footF: [102, 96], knee: [0, -1], toe: 0, cable: [130, 92], handle: true }
+  return {
+    props: [
+      frame([
+        [40, 100, 72, 100, 6],
+        [44, 103, 44, 110, 3],
+        [68, 103, 68, 110, 3],
+        [108, 84, 108, 106, 4],
+        [134, 30, 134, 110, 6],
+        [134, 92, 130, 92, 3],
+      ]),
+    ],
+    labels: { lift: 'Pull the handle to your stomach', hold: 'Squeeze your shoulder blades together', lower: 'Reach forward to straight arms' },
+    poses: withHalf({
+      bottom: { ...body, torso: 14, ...pair([95, 70]), elbow: [-0.3, 1] },
+      top: { ...body, torso: -4, ...pair([66, 80]), elbow: [-1, 0.2] },
+    }),
+  }
+}
+
+function lyingLegCurl() {
+  const body = { hip: [70, 86], torso: 90, head: 90, ...pair([116, 94]), elbow: [0, 1], knee: [0, 1], roller: true, space: { handN: 'world', handF: 'world' } }
+  return {
+    props: [frame([[28, 92, 118, 92, 5], [34, 95, 34, 110, 3], [110, 95, 110, 110, 3]])],
+    labels: { lift: 'Curl your heels towards your glutes', lower: 'Lower slowly to straight legs' },
+    poses: withHalf({
+      bottom: { ...body, footN: [19, 86], footF: [21, 86], toe: 180 },
+      top: { ...body, footN: [50, 62], footF: [52, 62], toe: -100 },
+    }),
+  }
+}
+
+function cableCrunch() {
+  const body = { hip: [74, 82], footN: [50, 105], footF: [48, 105], knee: [1, 1], toe: -90, cable: [122, -8], handle: true }
+  return {
+    props: [frame([[128, -10, 128, 110, 6], [128, -10, 122, -10, 4]])],
+    labels: { lift: 'Curl your ribs down towards your hips', hold: 'Squeeze your abs', lower: 'Return slowly to a long spine' },
+    poses: withHalf({
+      bottom: { ...body, torso: 18, head: 18, ...pair([91, 46], -1), elbow: [1, 0.6] },
+      top: { ...body, torso: 78, head: 125, ...pair([111, 78], -1), elbow: [0.5, 1] },
+    }),
+  }
+}
+
 // ---------- Mobility movements ----------
 
 const breathe = { holdA: 'Relax into the stretch', holdB: 'Breathe out slowly' }
@@ -530,6 +736,23 @@ const BY_LEVEL = {
   'forearm-plank': () => plank('forearm'),
   'long-lever-plank': () => plank('long-lever'),
   'feet-elevated-plank': () => plank('feet-elevated'),
+  // gym
+  'barbell-back-squat': backSquat,
+  'pause-back-squat': backSquat,
+  'barbell-bench-press': benchPress,
+  'pause-bench-press': benchPress,
+  'lat-pulldown': latPulldown,
+  'barbell-romanian-deadlift': barbellRdl,
+  'cable-triceps-pushdown': tricepsPushdown,
+  'captains-chair-knee-raise': () => legRaise({ support: 'chair' }),
+  'hanging-knee-raise': () => legRaise({ support: 'bar' }),
+  'hanging-leg-raise': () => legRaise({ support: 'bar', straight: true }),
+  'leg-press': legPress,
+  'incline-db-press': inclinePress,
+  'seated-cable-row': seatedCableRow,
+  'machine-leg-curl': lyingLegCurl,
+  'seated-db-shoulder-press': seatedShoulderPress,
+  'kneeling-cable-crunch': cableCrunch,
   // swaps
   'goblet-box-squat': boxSquat,
   'knee-pushup': kneePushup,

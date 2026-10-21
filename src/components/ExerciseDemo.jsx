@@ -28,6 +28,15 @@ function Prop({ prop }) {
       </g>
     )
   }
+  if (prop.type === 'frame') {
+    return (
+      <g>
+        {prop.lines.map(([x1, y1, x2, y2, w], i) => (
+          <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke={fill} strokeWidth={w} strokeLinecap="round" />
+        ))}
+      </g>
+    )
+  }
   if (prop.type === 'counter') {
     return (
       <g>
@@ -60,14 +69,37 @@ function Dumbbell({ at, vertical = false }) {
   return <rect x={at[0] - 4.5} y={at[1] - 4.5} width={9} height={9} rx={2.2} fill="var(--demo-db)" />
 }
 
+// A barbell seen end-on: the plate, with the sleeve in the middle.
+function Plate({ at }) {
+  return (
+    <g>
+      <circle cx={at[0]} cy={at[1]} r={7} fill="var(--demo-db)" />
+      <circle cx={at[0]} cy={at[1]} r={1.6} fill="var(--demo-bg)" />
+    </g>
+  )
+}
+
 function SideFigure({ pose }) {
   const s = skeleton(pose)
   const limb = { strokeLinecap: 'round', strokeLinejoin: 'round', fill: 'none' }
   const far = { ...limb, stroke: 'var(--demo-far)', strokeWidth: 5 }
   const near = { ...limb, stroke: 'var(--demo-body)', strokeWidth: 5.5 }
   const mid = [(s.wristN[0] + s.wristF[0]) / 2, (s.wristN[1] + s.wristF[1]) / 2]
+  const sole = [s.toeN[0] - s.ankleN[0], s.toeN[1] - s.ankleN[1]]
+  const shin = [(s.ankleN[0] - s.kneeN[0]) / BONES.shin, (s.ankleN[1] - s.kneeN[1]) / BONES.shin]
   return (
     <g>
+      {pose.cable && line(pose.cable, mid, { stroke: 'var(--demo-prop-edge)', strokeWidth: 1.2 })}
+      {pose.sled &&
+        line(
+          [s.ankleN[0] - sole[0] * 0.6 + pose.sled[0] * 3.2, s.ankleN[1] - sole[1] * 0.6 + pose.sled[1] * 3.2],
+          [s.toeN[0] + sole[0] * 0.4 + pose.sled[0] * 3.2, s.toeN[1] + sole[1] * 0.4 + pose.sled[1] * 3.2],
+          { stroke: 'var(--demo-prop-edge)', strokeWidth: 4, strokeLinecap: 'round' },
+        )}
+      {pose.roller && (
+        <circle cx={s.ankleN[0] - shin[1] * 4.5 - shin[0] * 2} cy={s.ankleN[1] + shin[0] * 4.5 - shin[1] * 2} r={3.5} fill="var(--demo-prop-edge)" />
+      )}
+      {pose.bar === 'hands' && <Plate at={mid} />}
       {/* far side */}
       <polyline points={[s.hip, s.kneeF, s.ankleF, s.toeF].map((p) => p.join(',')).join(' ')} {...far} />
       <polyline points={[s.shoulder, s.elbowF, s.wristF].map((p) => p.join(',')).join(' ')} {...far} />
@@ -81,6 +113,7 @@ function SideFigure({ pose }) {
       <polyline points={[s.shoulder, s.elbowN, s.wristN].map((p) => p.join(',')).join(' ')} {...near} />
       {(pose.db === 'hands' || pose.db === 'handN') && <Dumbbell at={s.wristN} />}
       {pose.db === 'goblet' && <Dumbbell at={mid} vertical />}
+      {pose.handle && <rect x={mid[0] - 3} y={mid[1] - 1.5} width={6} height={3} rx={1.5} fill="var(--demo-db)" />}
     </g>
   )
 }

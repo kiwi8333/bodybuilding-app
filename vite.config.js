@@ -11,7 +11,8 @@ function cspPlugin() {
     name: 'forge-csp',
     transformIndexHtml(html) {
       const api = (process.env.VITE_PUSH_API_URL || '').replace(/\/+$/, '')
-      let connect = "'self'"
+      // Open Food Facts: food search and barcode lookup on the Food tab.
+      let connect = "'self' https://world.openfoodfacts.org"
       try {
         if (api) connect += ` ${new URL(api).origin}`
       } catch {
@@ -23,7 +24,8 @@ function cspPlugin() {
         "style-src 'self' 'unsafe-inline'",
         "img-src 'self' data: blob:",
         "font-src 'self'",
-        "media-src 'none'",
+        // The barcode scanner shows the camera in a <video>.
+        "media-src 'self' blob: mediastream:",
         "object-src 'none'",
         "frame-src 'none'",
         "worker-src 'self'",

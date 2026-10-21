@@ -15,6 +15,7 @@ import {
 } from '../logic/state.js'
 import { formatDate } from '../lib/format.js'
 import { addDays } from '../reminders/schedule.js'
+import FoodSearch from '../components/FoodSearch.jsx'
 
 function Meter({ label, value, target, unit, range }) {
   const pct = target ? Math.min(100, (value / target) * 100) : 0
@@ -109,7 +110,7 @@ function AddFood({ onAdd, customFoods, onSaveCustom, onDeleteCustom }) {
   const [custom, setCustom] = useState({ name: '', kcal: '', protein: '' })
   const [saveFav, setSaveFav] = useState(false)
   const [error, setError] = useState(null)
-  const [mode, setMode] = useState('quick')
+  const [mode, setMode] = useState('search')
 
   const foods = useMemo(() => {
     const all = [...customFoods.map((f) => ({ ...f, portion: 'saved', custom: true })), ...COMMON_FOODS]
@@ -143,6 +144,9 @@ function AddFood({ onAdd, customFoods, onSaveCustom, onDeleteCustom }) {
     <section className="card">
       <h2>Add food</h2>
       <div className="segmented" role="tablist">
+        <button role="tab" aria-selected={mode === 'search'} className={mode === 'search' ? 'on' : ''} onClick={() => setMode('search')}>
+          Search & scan
+        </button>
         <button role="tab" aria-selected={mode === 'quick'} className={mode === 'quick' ? 'on' : ''} onClick={() => setMode('quick')}>
           Quick list
         </button>
@@ -151,7 +155,9 @@ function AddFood({ onAdd, customFoods, onSaveCustom, onDeleteCustom }) {
         </button>
       </div>
 
-      {mode === 'quick' ? (
+      {mode === 'search' ? (
+        <FoodSearch onAdd={onAdd} onSaveCustom={onSaveCustom} />
+      ) : mode === 'quick' ? (
         <>
           <div className="grid-2" style={{ gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)' }}>
             <label className="field">

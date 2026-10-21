@@ -113,7 +113,9 @@ describe('shipped policies', () => {
     const csp = tags[0].attrs.content
     expect(csp).toContain("script-src 'self'")
     expect(csp).toContain("object-src 'none'")
-    expect(csp).toContain("connect-src 'self' https://bodybuilding-app-pied.vercel.app")
+    // Only the app itself, the food database and the reminders API.
+    expect(csp).toContain("connect-src 'self' https://world.openfoodfacts.org https://bodybuilding-app-pied.vercel.app;")
+    expect(csp).toContain("frame-src 'none'")
     expect(csp).toContain("base-uri 'self'")
   })
 })

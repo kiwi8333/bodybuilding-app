@@ -10,6 +10,7 @@ import App from './App.jsx'
 import { StoreProvider } from './store/StoreContext.jsx'
 import ErrorBoundary from './components/ErrorBoundary.jsx'
 import { DialogProvider } from './components/Dialogs.jsx'
+import { ToastProvider } from './components/Toasts.jsx'
 
 // Wires up update checks so new deploys reach the installed app.
 registerSW({ immediate: true })
@@ -22,7 +23,9 @@ createRoot(document.getElementById('root')).render(
       <HashRouter>
         <StoreProvider>
           <DialogProvider>
-            <App />
+            <ToastProvider>
+              <App />
+            </ToastProvider>
           </DialogProvider>
         </StoreProvider>
       </HashRouter>

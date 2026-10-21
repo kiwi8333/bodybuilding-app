@@ -52,7 +52,7 @@ export default defineConfig({
     cspPlugin(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon-32.png', 'apple-touch-icon.png'],
+      includeAssets: ['favicon.svg', 'favicon-32.png', 'apple-touch-icon.png'],
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2}'],
         navigateFallback: `${base}index.html`,

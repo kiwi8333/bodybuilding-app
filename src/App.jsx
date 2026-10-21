@@ -1,17 +1,28 @@
-import { useEffect } from 'react'
+import { lazy, Suspense, useEffect } from 'react'
 import { Navigate, NavLink, Route, Routes, useLocation } from 'react-router-dom'
 import { useStore } from './store/StoreContext.jsx'
 import { FoodIcon, PlanIcon, ProgressIcon, SettingsIcon, TodayIcon } from './components/icons.jsx'
 import Onboarding from './pages/Onboarding.jsx'
 import Today from './pages/Today.jsx'
-import Workout from './pages/Workout.jsx'
-import WorkoutSummary from './pages/WorkoutSummary.jsx'
-import Cardio from './pages/Cardio.jsx'
-import Plan from './pages/Plan.jsx'
-import Progress from './pages/Progress.jsx'
-import Settings from './pages/Settings.jsx'
-import Food from './pages/Food.jsx'
-import Mobility from './pages/Mobility.jsx'
+import { SkeletonRows } from './components/EmptyState.jsx'
+
+// Today and the welcome screen ship in the main bundle so the app opens
+// instantly; every other page loads the first time it is visited (and is
+// cached by the service worker for offline use).
+const Workout = lazy(() => import('./pages/Workout.jsx'))
+const WorkoutSummary = lazy(() => import('./pages/WorkoutSummary.jsx'))
+const Cardio = lazy(() => import('./pages/Cardio.jsx'))
+const Plan = lazy(() => import('./pages/Plan.jsx'))
+const Progress = lazy(() => import('./pages/Progress.jsx'))
+const Settings = lazy(() => import('./pages/Settings.jsx'))
+const Food = lazy(() => import('./pages/Food.jsx'))
+const Mobility = lazy(() => import('./pages/Mobility.jsx'))
+
+const pageFallback = (
+  <section className="card">
+    <SkeletonRows count={3} label="Loading page" />
+  </section>
+)
 import { syncPush } from './reminders/client.js'
 
 const NAV = [
@@ -66,10 +77,12 @@ export default function App() {
     return (
       <div className="app page">
         {banners}
-        <Routes>
-          <Route path="/settings" element={<Settings />} />
-          <Route path="*" element={<Onboarding />} />
-        </Routes>
+        <Suspense fallback={pageFallback}>
+          <Routes>
+            <Route path="/settings" element={<Settings />} />
+            <Route path="*" element={<Onboarding />} />
+          </Routes>
+        </Suspense>
       </div>
     )
   }
@@ -80,18 +93,20 @@ export default function App() {
         {banners}
         {/* Keyed by path so each page plays the entry animation. */}
         <div className="route" key={location.pathname}>
-          <Routes>
-            <Route path="/" element={<Today />} />
-            <Route path="/workout" element={<Workout />} />
-            <Route path="/summary/:id" element={<WorkoutSummary />} />
-            <Route path="/cardio/:kind" element={<Cardio />} />
-            <Route path="/plan" element={<Plan />} />
-            <Route path="/progress" element={<Progress />} />
-            <Route path="/food" element={<Food />} />
-            <Route path="/mobility" element={<Mobility />} />
-            <Route path="/settings" element={<Settings />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
+          <Suspense fallback={pageFallback}>
+            <Routes>
+              <Route path="/" element={<Today />} />
+              <Route path="/workout" element={<Workout />} />
+              <Route path="/summary/:id" element={<WorkoutSummary />} />
+              <Route path="/cardio/:kind" element={<Cardio />} />
+              <Route path="/plan" element={<Plan />} />
+              <Route path="/progress" element={<Progress />} />
+              <Route path="/food" element={<Food />} />
+              <Route path="/mobility" element={<Mobility />} />
+              <Route path="/settings" element={<Settings />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </Suspense>
         </div>
       </main>
       <nav className="nav" aria-label="Main">

@@ -22,8 +22,11 @@ import PhotosSection from '../components/PhotosSection.jsx'
 import { heartZones } from '../logic/heart.js'
 import { ageFromBirthYear } from '../logic/nutrition.js'
 import { useDialogs } from '../components/Dialogs.jsx'
-
-const DELETE_ENTRY = { title: 'Delete this entry?', confirmLabel: 'Delete', tone: 'danger' }
+import { useToast } from '../components/Toasts.jsx'
+import SwipeRow from '../components/SwipeRow.jsx'
+import EmptyState from '../components/EmptyState.jsx'
+import { ProgressIcon } from '../components/icons.jsx'
+import { Link } from 'react-router-dom'
 
 function round1(n) {
   return Math.round(n * 10) / 10
@@ -42,7 +45,7 @@ function Delta({ value, unit }) {
 }
 
 function BodyweightSection() {
-  const { confirm } = useDialogs()
+  const toast = useToast()
   const { state, apply } = useStore()
   const [date, setDate] = useState(dateKey())
   const [kg, setKg] = useState('')
@@ -93,16 +96,22 @@ function BodyweightSection() {
         <details className="disclosure">
           <summary>Edit entries ({entries.length})</summary>
           <ul className="clean seg-list">
-            {[...entries].reverse().map((e) => (
-              <li key={e.date}>
-                <span>
-                  {formatDate(e.date)} · {e.kg} kg
-                </span>
-                <button className="link-btn" onClick={async () => (await confirm(DELETE_ENTRY)) && apply((s) => deleteBodyweight(s, e.date))}>
-                  Delete
-                </button>
-              </li>
-            ))}
+            {[...entries].reverse().map((e) => {
+              const remove = () => {
+                apply((s) => deleteBodyweight(s, e.date))
+                toast({ message: `Deleted ${formatDate(e.date)} · ${e.kg} kg`, actionLabel: 'Undo', onAction: () => apply((s) => addBodyweight(s, e.date, e.kg)) })
+              }
+              return (
+                <SwipeRow key={e.date} className="seg-row" onDelete={remove}>
+                  <span>
+                    {formatDate(e.date)} · {e.kg} kg
+                  </span>
+                  <button className="link-btn" onClick={remove}>
+                    Delete
+                  </button>
+                </SwipeRow>
+              )
+            })}
           </ul>
         </details>
       )}
@@ -111,7 +120,7 @@ function BodyweightSection() {
 }
 
 function MeasurementsSection() {
-  const { confirm } = useDialogs()
+  const toast = useToast()
   const { state, apply } = useStore()
   const [date, setDate] = useState(dateKey())
   const [values, setValues] = useState({})
@@ -198,7 +207,13 @@ function MeasurementsSection() {
                       <td key={f.key}>{m[f.key] ?? '–'}</td>
                     ))}
                     <td>
-                      <button className="link-btn" onClick={async () => (await confirm(DELETE_ENTRY)) && apply((s) => deleteMeasurement(s, m.date))}>
+                      <button
+                        className="link-btn"
+                        onClick={() => {
+                          apply((s) => deleteMeasurement(s, m.date))
+                          toast({ message: `Deleted measurements from ${formatDate(m.date)}`, actionLabel: 'Undo', onAction: () => apply((s) => addMeasurement(s, m.date, m)) })
+                        }}
+                      >
                         Delete
                       </button>
                     </td>
@@ -423,6 +438,21 @@ export default function Progress() {
           <span className="label">{state.cardio.phase === 'builder' ? 'Run Builder stage' : 'Can run 20 min'}</span>
         </div>
       </div>
+      {state.workouts.length === 0 && (
+        <section className="card">
+          <EmptyState
+            icon={<ProgressIcon />}
+            title="Your progress will show up here"
+            action={
+              <Link className="btn primary" to="/">
+                Go to today’s workout
+              </Link>
+            }
+          >
+            Finish your first workout to see strength charts, personal bests and your history.
+          </EmptyState>
+        </section>
+      )}
       <ExerciseSection />
       <HeartRateSection />
       <BodyweightSection />

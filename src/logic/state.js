@@ -237,6 +237,25 @@ export function removeSet(state, exerciseIndex) {
   return withExercise(state, exerciseIndex, (ex) => (ex.sets.length > 1 ? { ...ex, sets: ex.sets.slice(0, -1) } : ex))
 }
 
+// Remove one particular set (swipe to delete). An exercise keeps at least one.
+export function removeSetAt(state, exerciseIndex, setIndex) {
+  return withExercise(state, exerciseIndex, (ex) =>
+    ex.sets.length > 1 && ex.sets[setIndex] ? { ...ex, sets: ex.sets.filter((_, i) => i !== setIndex) } : ex,
+  )
+}
+
+// Undo for removeSetAt: put the set back where it was, if that exercise is
+// still the same one.
+export function insertSetAt(state, exerciseIndex, setIndex, set, trackId) {
+  const ex = state.activeWorkout?.exercises[exerciseIndex]
+  if (!ex || ex.trackId !== trackId) return state
+  return withExercise(state, exerciseIndex, (e) => {
+    const sets = [...e.sets]
+    sets.splice(Math.min(setIndex, sets.length), 0, set)
+    return { ...e, sets }
+  })
+}
+
 // Switch the level for this session only. The finished workout decides
 // whether that level sticks (progression evaluates what you actually did).
 export function changeExerciseLevel(state, exerciseIndex, levelIndex, now = new Date()) {
@@ -480,6 +499,15 @@ export function addFoodEntry(state, date, food, now = new Date()) {
   const day = state.nutrition.log[date] ?? []
   if (day.length >= 60) throw new Error('That day already has 60 entries.')
   return { ...state, nutrition: { ...state.nutrition, log: { ...state.nutrition.log, [date]: [...day, entry] } } }
+}
+
+// Undo for deleteFoodEntry: the same entry, back in its place.
+export function restoreFoodEntry(state, date, entry, index) {
+  const day = state.nutrition.log[date] ?? []
+  if (day.some((e) => e.id === entry.id)) return state
+  const next = [...day]
+  next.splice(Math.min(index, next.length), 0, entry)
+  return { ...state, nutrition: { ...state.nutrition, log: { ...state.nutrition.log, [date]: next } } }
 }
 
 export function deleteFoodEntry(state, date, id) {

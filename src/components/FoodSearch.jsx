@@ -1,5 +1,6 @@
 import { lazy, Suspense, useCallback, useState } from 'react'
 import { lookupBarcode, normalizeBarcode, portionOf, searchFoods } from '../food/openFoodFacts.js'
+import { SkeletonRows } from './EmptyState.jsx'
 
 const BarcodeScanner = lazy(() => import('./BarcodeScanner.jsx'))
 
@@ -111,9 +112,12 @@ export default function FoodSearch({ onAdd, onSaveCustom }) {
       )}
 
       {busy && (
-        <p className="hint" role="status">
-          Looking that up… this can take a few seconds.
-        </p>
+        <>
+          <p className="hint" role="status">
+            Looking that up… this can take a few seconds.
+          </p>
+          <SkeletonRows label="Searching foods" />
+        </>
       )}
       {error && <p className="error">{error}</p>}
       {added && (
@@ -168,7 +172,7 @@ export default function FoodSearch({ onAdd, onSaveCustom }) {
         </div>
       )}
 
-      {results && !picked && (
+      {results && !picked && !busy && (
         <ul className="clean food-list">
           {results.map((f) => (
             <li key={`${f.code}-${f.name}`}>

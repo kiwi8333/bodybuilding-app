@@ -9,6 +9,7 @@ import {
   dateKey,
   deleteCustomFood,
   deleteFoodEntry,
+  restoreFoodEntry,
   saveCustomFood,
   updateBodyProfile,
   updateNutritionSettings,
@@ -18,6 +19,10 @@ import { addDays } from '../reminders/schedule.js'
 import FoodSearch from '../components/FoodSearch.jsx'
 import CountUp from '../components/CountUp.jsx'
 import ProgressRing from '../components/ProgressRing.jsx'
+import SwipeRow from '../components/SwipeRow.jsx'
+import EmptyState from '../components/EmptyState.jsx'
+import { FoodIcon } from '../components/icons.jsx'
+import { useToast } from '../components/Toasts.jsx'
 import { useDialogs } from '../components/Dialogs.jsx'
 
 // Calories as a ring: what is left today in the middle, amber once over target.
@@ -275,6 +280,14 @@ export default function Food() {
   const [settingsError, setSettingsError] = useState(null)
   const [editingProfile, setEditingProfile] = useState(false)
 
+  const toast = useToast()
+
+  function removeEntry(entry, index) {
+    const day = date
+    safeApply((s) => deleteFoodEntry(s, day, entry.id))
+    toast({ message: `Removed ${entry.name}`, actionLabel: 'Undo', onAction: () => safeApply((s) => restoreFoodEntry(s, day, entry, index)) })
+  }
+
   const safeApply = (fn) => {
     try {
       apply(fn)
@@ -314,22 +327,24 @@ export default function Food() {
         )}
         {entries.length > 0 ? (
           <ul className="clean seg-list">
-            {entries.map((e) => (
-              <li key={e.id}>
+            {entries.map((e, i) => (
+              <SwipeRow key={e.id} className="seg-row" onDelete={() => removeEntry(e, i)}>
                 <span>{e.name}</span>
                 <span className="row" style={{ gap: 8 }}>
                   <span className="text-2">
                     {e.kcal} kcal · {e.protein} g
                   </span>
-                  <button className="link-btn" onClick={() => safeApply((s) => deleteFoodEntry(s, date, e.id))} aria-label={`Remove ${e.name}`}>
+                  <button className="link-btn" onClick={() => removeEntry(e, i)} aria-label={`Remove ${e.name}`}>
                     Remove
                   </button>
                 </span>
-              </li>
+              </SwipeRow>
             ))}
           </ul>
         ) : (
-          <p className="hint">Nothing logged for this day yet.</p>
+          <EmptyState icon={<FoodIcon />} title={date === today ? 'Nothing logged today' : 'Nothing logged this day'}>
+            Search, scan a barcode or pick from your quick list below. Swipe an entry left to remove it.
+          </EmptyState>
         )}
       </section>
 

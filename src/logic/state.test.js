@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { nextWorkoutId, estimateLiftMinutes, WORKOUTS } from '../data/program.js'
 import {
+  addFoodEntry,
+  deleteFoodEntry,
+  insertSetAt,
+  removeSetAt,
+  restoreFoodEntry,
   addBodyweight,
   addMeasurement,
   addSet,
@@ -268,5 +273,37 @@ describe('gym workouts', () => {
     expect(loaded.tracks.gymSquat.weight).toBe(40)
     expect(() => setTrainAt(s, 'beach')).toThrow()
     expect(() => normalizeState({ ...old, trainAt: 'beach' })).toThrow(/trainAt/)
+  })
+})
+
+describe('undoable deletes', () => {
+  it('removes a particular set and puts it back in place', () => {
+    let s = startWorkout(onboarded(), 'A')
+    s = updateSet(s, 0, 1, { value: 9, done: true })
+    const removed = s.activeWorkout.exercises[0].sets[1]
+    const after = removeSetAt(s, 0, 1)
+    expect(after.activeWorkout.exercises[0].sets).toHaveLength(2)
+    const back = insertSetAt(after, 0, 1, removed, 'squat')
+    expect(back.activeWorkout.exercises[0].sets).toEqual(s.activeWorkout.exercises[0].sets)
+    // Wrong exercise (e.g. the workout changed meanwhile): nothing happens.
+    expect(insertSetAt(after, 0, 1, removed, 'lunge')).toBe(after)
+  })
+
+  it('never removes the last set of an exercise', () => {
+    let s = startWorkout(onboarded(), 'A')
+    s = removeSetAt(removeSetAt(s, 0, 0), 0, 0)
+    expect(removeSetAt(s, 0, 0).activeWorkout.exercises[0].sets).toHaveLength(1)
+  })
+
+  it('restores a deleted food entry with its id and position', () => {
+    let s = onboarded()
+    for (const name of ['Oats', 'Eggs', 'Rice']) s = addFoodEntry(s, '2026-10-21', { name, kcal: 100, protein: 5 })
+    const day = s.nutrition.log['2026-10-21']
+    const gone = deleteFoodEntry(s, '2026-10-21', day[1].id)
+    const back = restoreFoodEntry(gone, '2026-10-21', day[1], 1)
+    expect(back.nutrition.log['2026-10-21']).toEqual(day)
+    expect(restoreFoodEntry(back, '2026-10-21', day[1], 1)).toBe(back) // already there
+    const lastGone = deleteFoodEntry(onboarded(), '2026-10-22', 'x')
+    expect(restoreFoodEntry(lastGone, '2026-10-22', day[0], 3).nutrition.log['2026-10-22']).toEqual([day[0]])
   })
 })

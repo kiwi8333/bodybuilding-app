@@ -3,6 +3,8 @@ import { POSES, addPhoto, compressImage, deletePhoto, listPhotos } from '../stor
 import { dateKey, makeId } from '../logic/state.js'
 import { formatDate } from '../lib/format.js'
 import { useDialogs } from './Dialogs.jsx'
+import EmptyState from './EmptyState.jsx'
+import { CameraIcon } from './icons.jsx'
 
 export default function PhotosSection() {
   const { confirm } = useDialogs()
@@ -92,9 +94,15 @@ export default function PhotosSection() {
       {error && <p className="error">{error}</p>}
 
       {photos === null ? (
-        <p className="hint">Loading photos…</p>
+        <div className="photo-grid" aria-busy="true" aria-label="Loading photos">
+          {[0, 1, 2].map((i) => (
+            <span key={i} className="skeleton photo-skeleton" />
+          ))}
+        </div>
       ) : photos.length === 0 ? (
-        <p className="hint">No photos yet.</p>
+        <EmptyState icon={<CameraIcon />} title="No photos yet">
+          Take a front and a side photo every 2–4 weeks in the same light. Changes the mirror misses show up side by side.
+        </EmptyState>
       ) : (
         <>
           <div className="segmented" role="tablist" aria-label="Compare pose">

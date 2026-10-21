@@ -1881,3 +1881,208 @@ h2 {
   opacity: 1;
   transform: none;
 }
+
+.brand-mark {
+  width: 64px;
+  height: 64px;
+  margin-bottom: 8px;
+  filter: drop-shadow(0 10px 22px rgba(255, 122, 26, 0.28));
+}
+
+/* ---------- Swipe to delete ---------- */
+.swipe {
+  position: relative;
+  overflow: hidden;
+  list-style: none;
+}
+
+.swipe-bg {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 16px;
+  background: var(--bad);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.85rem;
+  border-radius: 10px;
+  opacity: 0;
+}
+
+.swipe.swiping .swipe-bg {
+  opacity: 1;
+}
+
+.swipe-fg {
+  position: relative;
+  touch-action: pan-y;
+  -webkit-user-select: none;
+  user-select: none;
+  background: var(--surface);
+  transition: transform 0.22s var(--ease-out);
+}
+
+.seg-list li.swipe {
+  display: block;
+  padding: 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.seg-list li.swipe:last-child {
+  border-bottom: none;
+}
+
+.seg-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  font-size: 0.92rem;
+}
+
+/* ---------- Toast ---------- */
+.toast-region {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: calc(var(--nav-h) + env(safe-area-inset-bottom) + 12px);
+  z-index: 40;
+  display: flex;
+  justify-content: center;
+  padding: 0 16px;
+  pointer-events: none;
+}
+
+.toast {
+  pointer-events: auto;
+  width: min(608px, 100%);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 10px 10px 16px;
+  border-radius: 14px;
+  /* Dark in both themes, like system toasts, so the orange action stays readable. */
+  background: #1f2226;
+  color: #f4f4f2;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 0.92rem;
+  font-weight: 600;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+  animation: toast-in 0.3s var(--ease-spring);
+}
+
+.toast span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.toast-action {
+  flex: none;
+  border: none;
+  background: transparent;
+  color: #ff9a4d;
+  font-weight: 800;
+  font-size: 0.95rem;
+  padding: 8px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  min-height: 40px;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.96);
+  }
+}
+
+/* ---------- Empty states and loading placeholders ---------- */
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 6px;
+  padding: 18px 8px;
+}
+
+.empty-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--accent-soft);
+  color: var(--accent);
+  margin-bottom: 4px;
+}
+
+.empty-icon svg {
+  width: 26px;
+  height: 26px;
+}
+
+.empty p {
+  max-width: 32ch;
+}
+
+.empty .btn {
+  margin-top: 8px;
+}
+
+.skeleton {
+  display: block;
+  height: 12px;
+  border-radius: 6px;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--text) 7%, transparent) 25%,
+    color-mix(in srgb, var(--text) 13%, transparent) 50%,
+    color-mix(in srgb, var(--text) 7%, transparent) 75%
+  );
+  background-size: 300% 100%;
+  animation: shimmer 1.4s linear infinite;
+}
+
+.skeleton.short {
+  width: 38%;
+  height: 10px;
+}
+
+.skeleton-list li {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.skeleton-list li:last-child {
+  border-bottom: none;
+}
+
+.skeleton-list {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.photo-skeleton {
+  height: auto;
+  aspect-ratio: 3 / 4;
+  border-radius: 10px;
+}
+
+@keyframes shimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: 0 0;
+  }
+}

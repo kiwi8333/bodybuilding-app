@@ -8,6 +8,8 @@ import {
   discardWorkout,
   finishWorkout,
   removeSet,
+  removeSetAt,
+  insertSetAt,
   setExerciseSwap,
   setWeightFrom,
   toggleWarmUp,
@@ -21,9 +23,11 @@ import { useNow } from '../components/useNow.js'
 import { formatClock } from '../lib/format.js'
 import { unlockAudio } from '../lib/alerts.js'
 import { useDialogs } from '../components/Dialogs.jsx'
+import { useToast } from '../components/Toasts.jsx'
 
 export default function Workout() {
   const { confirm } = useDialogs()
+  const toast = useToast()
   const { state, apply } = useStore()
   const navigate = useNavigate()
   const [timer, setTimer] = useState(null)
@@ -139,6 +143,12 @@ export default function Workout() {
           onWeight={(ei, si, w) => apply((s) => setWeightFrom(s, ei, si, w))}
           onAddSet={(ei) => apply((s) => addSet(s, ei))}
           onRemoveSet={(ei) => apply((s) => removeSet(s, ei))}
+          onDeleteSet={(ei, si) => {
+            const { trackId, sets } = aw.exercises[ei]
+            const set = sets[si]
+            apply((s) => removeSetAt(s, ei, si))
+            toast({ message: `Set ${si + 1} removed`, actionLabel: 'Undo', onAction: () => apply((s) => insertSetAt(s, ei, si, set, trackId)) })
+          }}
           onChangeLevel={(ei, level) => apply((s) => changeExerciseLevel(s, ei, level))}
           onSetRir={(ei, si, rir) => apply((s) => updateSet(s, ei, si, { rir }))}
           onSwap={(ei, swapId, remember) => apply((s) => setExerciseSwap(s, ei, swapId, { remember }))}

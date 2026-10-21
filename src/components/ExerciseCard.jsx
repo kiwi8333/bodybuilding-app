@@ -9,6 +9,7 @@ import { formatDate } from '../lib/format.js'
 import { CheckIcon } from './icons.jsx'
 import ExerciseDemo from './ExerciseDemo.jsx'
 import CoachBox from './CoachBox.jsx'
+import SwipeRow from './SwipeRow.jsx'
 import { haptic } from '../lib/alerts.js'
 
 const MAX_VALUE = { weighted: 100, reps: 100, hold: 600 }
@@ -30,6 +31,7 @@ export default function ExerciseCard({
   onWeight,
   onAddSet,
   onRemoveSet,
+  onDeleteSet,
   onChangeLevel,
   onSetRir,
   onSwap,
@@ -148,7 +150,12 @@ export default function ExerciseCard({
         </div>
         {exercise.sets.map((set, j) => (
           <div key={j} className="set-block">
-            <div className={`set-row ${set.done ? 'done' : ''} ${celebrate?.setIndex === j ? 'just-done' : ''}`}>
+            <SwipeRow
+              as="div"
+              className={`set-row ${set.done ? 'done' : ''} ${celebrate?.setIndex === j ? 'just-done' : ''}`}
+              disabled={exercise.sets.length <= 1}
+              onDelete={() => onDeleteSet(index, j)}
+            >
               <span className="num">{j + 1}</span>
               {track.type === 'weighted' ? (
                 <select
@@ -196,7 +203,7 @@ export default function ExerciseCard({
                   </span>
                 )}
               </button>
-            </div>
+            </SwipeRow>
             {set.done && track.type !== 'hold' && (
               <div className="rir-row" role="radiogroup" aria-label={`Set ${j + 1}: reps left in the tank`}>
                 <span className="hint">Reps left?</span>

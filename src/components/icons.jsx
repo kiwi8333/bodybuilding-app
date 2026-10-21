@@ -45,3 +45,10 @@ export const FoodIcon = () => (
     <path d="M7 3v8a2 2 0 0 0 2 2v8M5 3v5M9 3v5M16 21V3c2.5 1.5 3.5 4 3.5 7s-1 4-3.5 4" />
   </svg>
 )
+
+export const CameraIcon = () => (
+  <svg {...base}>
+    <path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z" />
+    <circle cx="12" cy="13" r="3.5" />
+  </svg>
+)

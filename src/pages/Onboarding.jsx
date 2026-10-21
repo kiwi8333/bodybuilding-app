@@ -43,6 +43,7 @@ export default function Onboarding() {
   return (
     <form className="page" onSubmit={submit}>
       <div className="page-head">
+        <img className="brand-mark" src={`${import.meta.env.BASE_URL}favicon.svg`} alt="" width="64" height="64" />
         <span className="eyebrow">Welcome to Forge</span>
         <h1>Build muscle. Get fit.</h1>
         <p className="text-2">

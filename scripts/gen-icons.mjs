@@ -1,24 +1,25 @@
-// Regenerates the committed PNG icons from icon.svg. Run with `npm run icons`,
-// which installs sharp temporarily so it is not a dependency of every build.
+// Regenerates the committed icons from the drawing in icon-art.mjs. Run with
+// `npm run icons`, which installs sharp temporarily so it is not a dependency
+// of every build.
 import sharp from 'sharp'
-import { mkdirSync } from 'fs'
+import { mkdirSync, writeFileSync } from 'fs'
+import { iconSvg } from './icon-art.mjs'
 
 mkdirSync('public/icons', { recursive: true })
 
-const svgPath = 'scripts/icon.svg'
+const rounded = Buffer.from(iconSvg({ shape: 'rounded' }))
+// iOS and Android cut their own corners; transparent corners would show as
+// black on an iPhone home screen, so these are full-bleed squares.
+const square = Buffer.from(iconSvg({ shape: 'square' }))
+const maskable = Buffer.from(iconSvg({ shape: 'square', scale: 0.85 }))
 
-for (const size of [192, 512]) {
-  await sharp(svgPath).resize(size, size).png().toFile(`public/icons/icon-${size}.png`)
-}
+const png = (svg, size, file) => sharp(svg, { density: Math.ceil((72 * size) / 512) * 2 }).resize(size, size).png().toFile(file)
 
-// Maskable icon: artwork inside the 80% safe zone on a full-bleed background.
-await sharp(svgPath)
-  .resize(410, 410)
-  .extend({ top: 51, bottom: 51, left: 51, right: 51, background: '#111315' })
-  .png()
-  .toFile('public/icons/maskable-512.png')
-
-await sharp(svgPath).resize(180, 180).png().toFile('public/apple-touch-icon.png')
-await sharp(svgPath).resize(32, 32).png().toFile('public/favicon-32.png')
+await png(rounded, 192, 'public/icons/icon-192.png')
+await png(rounded, 512, 'public/icons/icon-512.png')
+await png(maskable, 512, 'public/icons/maskable-512.png')
+await png(square, 180, 'public/apple-touch-icon.png')
+await png(rounded, 32, 'public/favicon-32.png')
+writeFileSync('public/favicon.svg', iconSvg({ shape: 'rounded' }))
 
 console.log('Icons generated.')

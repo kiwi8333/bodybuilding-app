@@ -21,6 +21,9 @@ import LineChart from '../components/LineChart.jsx'
 import PhotosSection from '../components/PhotosSection.jsx'
 import { heartZones } from '../logic/heart.js'
 import { ageFromBirthYear } from '../logic/nutrition.js'
+import { useDialogs } from '../components/Dialogs.jsx'
+
+const DELETE_ENTRY = { title: 'Delete this entry?', confirmLabel: 'Delete', tone: 'danger' }
 
 function round1(n) {
   return Math.round(n * 10) / 10
@@ -39,6 +42,7 @@ function Delta({ value, unit }) {
 }
 
 function BodyweightSection() {
+  const { confirm } = useDialogs()
   const { state, apply } = useStore()
   const [date, setDate] = useState(dateKey())
   const [kg, setKg] = useState('')
@@ -94,7 +98,7 @@ function BodyweightSection() {
                 <span>
                   {formatDate(e.date)} · {e.kg} kg
                 </span>
-                <button className="link-btn" onClick={() => window.confirm('Delete this entry?') && apply((s) => deleteBodyweight(s, e.date))}>
+                <button className="link-btn" onClick={async () => (await confirm(DELETE_ENTRY)) && apply((s) => deleteBodyweight(s, e.date))}>
                   Delete
                 </button>
               </li>
@@ -107,6 +111,7 @@ function BodyweightSection() {
 }
 
 function MeasurementsSection() {
+  const { confirm } = useDialogs()
   const { state, apply } = useStore()
   const [date, setDate] = useState(dateKey())
   const [values, setValues] = useState({})
@@ -193,7 +198,7 @@ function MeasurementsSection() {
                       <td key={f.key}>{m[f.key] ?? '–'}</td>
                     ))}
                     <td>
-                      <button className="link-btn" onClick={() => window.confirm('Delete this entry?') && apply((s) => deleteMeasurement(s, m.date))}>
+                      <button className="link-btn" onClick={async () => (await confirm(DELETE_ENTRY)) && apply((s) => deleteMeasurement(s, m.date))}>
                         Delete
                       </button>
                     </td>
@@ -289,6 +294,7 @@ function ExerciseSection() {
 }
 
 function HistorySection() {
+  const { confirm } = useDialogs()
   const { state, apply } = useStore()
   const items = [
     ...state.workouts.map((w) => ({ type: 'workout', at: w.finishedAt, w })),
@@ -323,7 +329,7 @@ function HistorySection() {
                     </li>
                   ))}
                 </ul>
-                <button className="link-btn" style={{ color: 'var(--bad)', marginTop: 6 }} onClick={() => window.confirm('Delete this workout from history?') && apply((s) => deleteWorkoutRecord(s, item.w.id))}>
+                <button className="link-btn" style={{ color: 'var(--bad)', marginTop: 6 }} onClick={async () => (await confirm({ title: 'Delete this workout from history?', message: 'Your current weights and levels stay as they are.', confirmLabel: 'Delete', tone: 'danger' })) && apply((s) => deleteWorkoutRecord(s, item.w.id))}>
                   Delete workout
                 </button>
               </details>
@@ -344,7 +350,7 @@ function HistorySection() {
                   {item.c.distanceMiles !== null && ` · ${item.c.distanceMiles} mi`}
                 </p>
                 {item.c.notes && <p className="small muted">{item.c.notes}</p>}
-                <button className="link-btn" style={{ color: 'var(--bad)', marginTop: 6 }} onClick={() => window.confirm('Delete this cardio session from history?') && apply((s) => deleteCardioLog(s, item.c.id))}>
+                <button className="link-btn" style={{ color: 'var(--bad)', marginTop: 6 }} onClick={async () => (await confirm({ title: 'Delete this cardio session from history?', confirmLabel: 'Delete', tone: 'danger' })) && apply((s) => deleteCardioLog(s, item.c.id))}>
                   Delete session
                 </button>
               </details>

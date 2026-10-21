@@ -12,6 +12,7 @@ import { prescribe } from '../logic/progression.js'
 import { formatKg } from '../logic/weights.js'
 import ExerciseDemo from '../components/ExerciseDemo.jsx'
 import CoachBox from '../components/CoachBox.jsx'
+import { useDialogs } from '../components/Dialogs.jsx'
 
 const TABS = [
   ['lifting', 'Lifting'],
@@ -191,6 +192,7 @@ function ExerciseRow({ number, trackId, state, open, onToggle, onChooseLevel, on
 }
 
 function LiftingTab({ state, apply }) {
+  const { confirm, notify } = useDialogs()
   const next = nextWorkoutId(state.workouts, state.trainAt)
   const [chosen, setSelected] = useState(next)
   const [openTrack, setOpenTrack] = useState(null)
@@ -202,18 +204,18 @@ function LiftingTab({ state, apply }) {
   const cardioMin = Math.round(totalSeconds(currentCardioStage(state.cardio)) / 60)
   const totalSets = workout.trackIds.reduce((n, id) => n + TRACKS[id].sets, 0)
 
-  function chooseLevel(trackId, levelIndex, name) {
+  async function chooseLevel(trackId, levelIndex, name) {
     if (state.activeWorkout) {
-      window.alert('Finish or discard your current workout before changing levels here. You can also change a level inside the workout.')
+      notify({ title: 'A workout is in progress', message: 'Finish or discard it before changing levels here. You can also change a level inside the workout.' })
       return
     }
-    if (!window.confirm(`Switch to "${name}"? Your next session will use this level.`)) return
+    if (!(await confirm({ title: `Switch to ${name}?`, message: 'Your next session will use this level.', confirmLabel: 'Switch level' }))) return
     apply((s) => setTrackLevel(s, trackId, levelIndex))
   }
 
   function setSwap(trackId, swapId) {
     if (state.activeWorkout) {
-      window.alert('Finish or discard your current workout first. You can also swap inside the workout.')
+      notify({ title: 'A workout is in progress', message: 'Finish or discard it first. You can also swap inside the workout.' })
       return
     }
     apply((s) => setTrackSwap(s, trackId, swapId))
@@ -263,12 +265,12 @@ function LiftingTab({ state, apply }) {
           <button
             className="link-btn"
             style={{ alignSelf: 'flex-start' }}
-            onClick={() => {
-              if (!window.confirm('Start a deload week now? Use this if you feel run down, sore joints or stalled on several exercises.')) return
+            onClick={async () => {
+              if (!(await confirm({ title: 'Start a deload week now?', message: 'Use this if you feel run down, have sore joints or have stalled on several exercises.', confirmLabel: 'Start deload' }))) return
               try {
                 apply((s) => beginDeload(s))
               } catch (err) {
-                window.alert(err.message)
+                notify({ title: 'That didn’t work', message: err.message })
               }
             }}
           >

@@ -2,8 +2,10 @@ import { useEffect, useRef, useState } from 'react'
 import { POSES, addPhoto, compressImage, deletePhoto, listPhotos } from '../store/photos.js'
 import { dateKey, makeId } from '../logic/state.js'
 import { formatDate } from '../lib/format.js'
+import { useDialogs } from './Dialogs.jsx'
 
 export default function PhotosSection() {
+  const { confirm } = useDialogs()
   const [photos, setPhotos] = useState(null)
   const [pose, setPose] = useState('front')
   const [date, setDate] = useState(dateKey())
@@ -43,7 +45,7 @@ export default function PhotosSection() {
   }
 
   async function remove(id) {
-    if (!window.confirm('Delete this photo? It cannot be recovered unless it is in a backup.')) return
+    if (!(await confirm({ title: 'Delete this photo?', message: 'It cannot be recovered unless it is in a backup.', confirmLabel: 'Delete photo', tone: 'danger' }))) return
     try {
       await deletePhoto(id)
       setViewing(null)

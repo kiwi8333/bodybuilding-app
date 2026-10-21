@@ -7,6 +7,7 @@ import { listPhotos, replaceAllPhotos, validatePhoto } from '../store/photos.js'
 import { disablePush } from '../reminders/client.js'
 import ReminderSettings from '../components/ReminderSettings.jsx'
 import { BodyAndHeartSettings } from '../components/HeartSettings.jsx'
+import { useDialogs } from '../components/Dialogs.jsx'
 
 function Status({ status }) {
   if (!status) return null
@@ -18,6 +19,7 @@ function Status({ status }) {
 }
 
 export default function Settings() {
+  const { confirm } = useDialogs()
   const { state, apply, replaceAll, readOnly } = useStore()
   const navigate = useNavigate()
   const onboarded = state.profile.onboarded
@@ -113,7 +115,13 @@ export default function Settings() {
     try {
       const { state: restored, photos } = parseFullBackup(await file.text(), validatePhoto)
       const summary = `${restored.workouts.length} workouts, ${restored.cardioLogs.length} cardio sessions, ${restored.bodyweight.length} bodyweight entries${photos ? `, ${photos.length} photos` : ''}`
-      if (!window.confirm(`Replace ALL data on this device with this backup (${summary})? This cannot be undone.`)) return
+      const ok = await confirm({
+        title: 'Replace all data with this backup?',
+        message: `Everything on this device is replaced by the backup (${summary}). This cannot be undone.`,
+        confirmLabel: 'Restore backup',
+        tone: 'danger',
+      })
+      if (!ok) return
       // Everything is validated above; photos are written first in a single
       // transaction, then the rest of the data.
       if (photos) await replaceAllPhotos(photos)
@@ -127,8 +135,14 @@ export default function Settings() {
   }
 
   async function resetAll() {
-    const answer = window.prompt('This deletes every workout, cardio log, food entry, measurement and photo on this device. Type DELETE to confirm.')
-    if (answer !== 'DELETE') return
+    const ok = await confirm({
+      title: 'Delete all data?',
+      message: 'This deletes every workout, cardio log, food entry, measurement and photo on this device.',
+      confirmLabel: 'Delete everything',
+      tone: 'danger',
+      requireText: 'DELETE',
+    })
+    if (!ok) return
     try {
       if (state.reminders.enabled) await disablePush().catch(() => {})
       await replaceAllPhotos([]).catch(() => {})

@@ -7,6 +7,7 @@ import ExerciseDemo from '../components/ExerciseDemo.jsx'
 import { useNow } from '../components/useNow.js'
 import { alertChange, alertDone, keepScreenOn, releaseScreen, unlockAudio } from '../lib/alerts.js'
 import { formatClock, formatMinutes } from '../lib/format.js'
+import { useDialogs } from '../components/Dialogs.jsx'
 
 const SEGMENTS = mobilitySegments()
 const TOTAL = mobilityTotalSeconds()
@@ -21,6 +22,7 @@ function positionAt(elapsed) {
 }
 
 export default function Mobility() {
+  const { confirm } = useDialogs()
   const { apply } = useStore()
   const [timer, setTimer] = useState(null) // { startedAt, pausedAt, pausedMs }
   const [finished, setFinished] = useState(false)
@@ -109,8 +111,8 @@ export default function Mobility() {
           </button>
           <button
             className="btn big danger"
-            onClick={() => {
-              if (!window.confirm('Stop the routine?')) return
+            onClick={async () => {
+              if (!(await confirm({ title: 'Stop the routine?', confirmLabel: 'Stop', cancelLabel: 'Keep going' }))) return
               releaseScreen()
               setTimer(null)
             }}

@@ -8,11 +8,13 @@ import { beginDeload, dateKey, dismissDumbbellAlert, endDeloadEarly, postponeDel
 import { addDays, daysBetween } from '../reminders/schedule.js'
 import { MOBILITY_ROUTINE, mobilityTotalSeconds } from '../data/mobility.js'
 import { formatMinutes } from '../lib/format.js'
+import { useDialogs } from './Dialogs.jsx'
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 
 // Coaching nudges shown at the top of Today.
 export function TodayAlerts() {
+  const { confirm, notify } = useDialogs()
   const { state, apply } = useStore()
   const now = new Date()
   const today = dateKey(now)
@@ -23,7 +25,7 @@ export function TodayAlerts() {
     try {
       apply(fn)
     } catch (err) {
-      window.alert(err.message)
+      notify({ title: 'That didn’t work', message: err.message })
     }
   }
 
@@ -37,7 +39,7 @@ export function TodayAlerts() {
           Session {state.deload.workoutsDone + 1} of {DELOAD_WORKOUTS}: one set fewer and about 10% lighter. Progression is paused so your body can recover and come
           back stronger.
         </p>
-        <button className="link-btn" style={{ alignSelf: 'flex-start' }} onClick={() => window.confirm('End the deload now and return to normal training?') && act(endDeloadEarly)}>
+        <button className="link-btn" style={{ alignSelf: 'flex-start' }} onClick={async () => (await confirm({ title: 'End the deload now?', message: 'You go back to normal training and progression from your next workout.', confirmLabel: 'End deload' })) && act(endDeloadEarly)}>
           End deload early
         </button>
       </section>,

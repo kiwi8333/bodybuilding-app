@@ -9,6 +9,7 @@ import { alertChange, alertDone, keepScreenOn, releaseScreen, unlockAudio } from
 import { formatClock, formatMinutes } from '../lib/format.js'
 import { heartZones, targetZonesFor, zoneRangeText } from '../logic/heart.js'
 import { ageFromBirthYear } from '../logic/nutrition.js'
+import { useDialogs } from '../components/Dialogs.jsx'
 
 const TIMER_KEY = 'forge:cardio-timer'
 const KIND_LABEL = { walk: 'Walk', jog: 'Jog', hard: 'Hard' }
@@ -48,6 +49,7 @@ function speedOf(kind, walk, jog) {
 }
 
 export default function Cardio() {
+  const { confirm } = useDialogs()
   const { kind } = useParams()
   const { state, apply } = useStore()
   const valid = kind === 'plan' || kind === 'rest-walk'
@@ -307,8 +309,8 @@ export default function Cardio() {
           </button>
           <button
             className="btn big danger"
-            onClick={() => {
-              if (window.confirm('End the session now? You can still log it.')) stop(false, elapsed)
+            onClick={async () => {
+              if (await confirm({ title: 'End the session now?', message: 'You can still log it.', confirmLabel: 'End session', cancelLabel: 'Keep going' })) stop(false, elapsed)
             }}
           >
             End

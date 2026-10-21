@@ -18,6 +18,7 @@ import { addDays } from '../reminders/schedule.js'
 import FoodSearch from '../components/FoodSearch.jsx'
 import CountUp from '../components/CountUp.jsx'
 import ProgressRing from '../components/ProgressRing.jsx'
+import { useDialogs } from '../components/Dialogs.jsx'
 
 // Calories as a ring: what is left today in the middle, amber once over target.
 function CalorieRing({ value, target }) {
@@ -135,6 +136,7 @@ function ProfileSetup({ state, apply, targets, onDone }) {
 }
 
 function AddFood({ onAdd, customFoods, onSaveCustom, onDeleteCustom }) {
+  const { confirm } = useDialogs()
   const [query, setQuery] = useState('')
   const [servings, setServings] = useState('1')
   const [custom, setCustom] = useState({ name: '', kcal: '', protein: '' })
@@ -216,7 +218,7 @@ function AddFood({ onAdd, customFoods, onSaveCustom, onDeleteCustom }) {
                 </span>
                 <span className="row" style={{ gap: 6 }}>
                   {f.custom && (
-                    <button className="btn small ghost" aria-label={`Delete saved food ${f.name}`} onClick={() => window.confirm(`Delete saved food "${f.name}"?`) && onDeleteCustom(f.id)}>
+                    <button className="btn small ghost" aria-label={`Delete saved food ${f.name}`} onClick={async () => (await confirm({ title: `Delete “${f.name}”?`, message: 'It is removed from your quick list. Entries already logged stay.', confirmLabel: 'Delete', tone: 'danger' })) && onDeleteCustom(f.id)}>
                       ✕
                     </button>
                   )}
@@ -261,6 +263,7 @@ function AddFood({ onAdd, customFoods, onSaveCustom, onDeleteCustom }) {
 }
 
 export default function Food() {
+  const { notify } = useDialogs()
   const { state, apply } = useStore()
   const today = dateKey()
   const [date, setDate] = useState(today)
@@ -276,7 +279,7 @@ export default function Food() {
     try {
       apply(fn)
     } catch (err) {
-      window.alert(err.message)
+      notify({ title: 'That didn’t work', message: err.message })
     }
   }
 

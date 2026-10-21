@@ -20,8 +20,10 @@ import CountUp from '../components/CountUp.jsx'
 import { useNow } from '../components/useNow.js'
 import { formatClock } from '../lib/format.js'
 import { unlockAudio } from '../lib/alerts.js'
+import { useDialogs } from '../components/Dialogs.jsx'
 
 export default function Workout() {
+  const { confirm } = useDialogs()
   const { state, apply } = useStore()
   const navigate = useNavigate()
   const [timer, setTimer] = useState(null)
@@ -47,14 +49,20 @@ export default function Workout() {
     if (done) setTimer({ endAt: Date.now() + restSeconds * 1000, total: restSeconds })
   }
 
-  function finish() {
+  async function finish() {
     setError(null)
     const unfinished = totalSets - doneSets
     const pending = aw.exercises.some((ex) => ex.sets.some((s) => !s.done && s.value !== null))
-    let message = 'Finish this workout and save it?'
-    if (pending) message = 'Some sets have numbers entered but are not ticked, so they will NOT be saved. Finish anyway?'
-    else if (unfinished > 0) message = `${unfinished} set${unfinished === 1 ? '' : 's'} not completed. Unticked sets are not saved. Finish anyway?`
-    if (!window.confirm(message)) return
+    let title = 'Finish and save this workout?'
+    let message = 'Your progression updates from what you logged.'
+    if (pending) {
+      title = 'Some sets are not ticked'
+      message = 'They have numbers entered but are not ticked, so they will NOT be saved. Finish anyway?'
+    } else if (unfinished > 0) {
+      title = `${unfinished} set${unfinished === 1 ? '' : 's'} not completed`
+      message = 'Unticked sets are not saved. Finish anyway?'
+    }
+    if (!(await confirm({ title, message, confirmLabel: 'Finish workout', cancelLabel: 'Keep training' }))) return
     try {
       const id = aw.id
       leaving.current = true
@@ -67,8 +75,8 @@ export default function Workout() {
     }
   }
 
-  function discard() {
-    if (!window.confirm('Discard this workout? Nothing from it will be saved and your progression will not change.')) return
+  async function discard() {
+    if (!(await confirm({ title: 'Discard this workout?', message: 'Nothing from it will be saved and your progression will not change.', confirmLabel: 'Discard workout', cancelLabel: 'Keep training', tone: 'danger' }))) return
     leaving.current = true
     apply(discardWorkout)
     navigate('/', { replace: true })

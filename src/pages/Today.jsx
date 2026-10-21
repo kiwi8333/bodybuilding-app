@@ -9,6 +9,8 @@ import { startWorkout, dateKey, setTrainAt } from '../logic/state.js'
 import { TARGET_SESSIONS_PER_WEEK, weeklyStreak, workoutsThisWeek } from '../logic/history.js'
 import { targetText } from '../lib/describe.js'
 import { FoodSummaryCard, MobilityCard, TodayAlerts } from '../components/TodayCards.jsx'
+import CountUp from '../components/CountUp.jsx'
+import ProgressRing from '../components/ProgressRing.jsx'
 
 function greeting(now) {
   const h = now.getHours()
@@ -55,14 +57,19 @@ export default function Today() {
       </div>
 
       <div className="stats">
-        <div className="stat">
-          <span className="value">
-            {thisWeek}/{TARGET_SESSIONS_PER_WEEK}
+        <div className="stat stat-ring">
+          <ProgressRing value={thisWeek} max={TARGET_SESSIONS_PER_WEEK} size={46} tone={thisWeek >= TARGET_SESSIONS_PER_WEEK ? 'good' : 'accent'} />
+          <span className="stack" style={{ gap: 2 }}>
+            <span className="value">
+              <CountUp value={thisWeek} fromZero />/{TARGET_SESSIONS_PER_WEEK}
+            </span>
+            <span className="label">Workouts this week</span>
           </span>
-          <span className="label">Workouts this week</span>
         </div>
         <div className="stat">
-          <span className="value">{streak}</span>
+          <span className="value">
+            <CountUp value={streak} fromZero />
+          </span>
           <span className="label">Week streak</span>
         </div>
       </div>

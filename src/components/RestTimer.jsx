@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { useNow } from './useNow.js'
 import { alertDone } from '../lib/alerts.js'
 import { formatClock } from '../lib/format.js'
+import ProgressRing from './ProgressRing.jsx'
 
 export default function RestTimer({ timer, onAdjust, onClose }) {
   const now = useNow(Boolean(timer))
@@ -22,14 +23,10 @@ export default function RestTimer({ timer, onAdjust, onClose }) {
   return (
     <div className="rest-bar" role="timer" aria-live="polite">
       <div className={`rest-inner ${finished ? 'done' : ''}`}>
-        <div className="stack" style={{ gap: 4, flex: 1, minWidth: 0 }}>
-          <div className="row" style={{ gap: 8 }}>
-            <span className="time">{finished ? 'Go!' : formatClock(remaining)}</span>
-            <span className="small muted">{finished ? 'Next set' : 'Rest'}</span>
-          </div>
-          <div className="progress" aria-hidden>
-            <span style={{ width: `${pct}%` }} />
-          </div>
+        <ProgressRing value={finished ? 100 : 100 - pct} max={100} size={44} stroke={5} tone={finished ? 'good' : 'accent'} linear />
+        <div className="row" style={{ gap: 8, flex: 1, minWidth: 0 }}>
+          <span className="time">{finished ? 'Go!' : formatClock(remaining)}</span>
+          <span className="small muted">{finished ? 'Next set' : 'Rest'}</span>
         </div>
         {!finished && (
           <button className="btn small" onClick={() => onAdjust(15)} aria-label="Add 15 seconds">

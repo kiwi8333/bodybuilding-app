@@ -24,7 +24,8 @@ const NAV = [
 
 export default function App() {
   const { state, loadError, readOnly, saveError, dismissLoadError } = useStore()
-  const flash = useLocation().state?.flash
+  const location = useLocation()
+  const flash = location.state?.flash
 
   // Keep reminder data current (next workout, last session, backups). Debounced,
   // and syncPush itself only talks to the server when something changed.
@@ -77,18 +78,21 @@ export default function App() {
     <>
       <main className="app page">
         {banners}
-        <Routes>
-          <Route path="/" element={<Today />} />
-          <Route path="/workout" element={<Workout />} />
-          <Route path="/summary/:id" element={<WorkoutSummary />} />
-          <Route path="/cardio/:kind" element={<Cardio />} />
-          <Route path="/plan" element={<Plan />} />
-          <Route path="/progress" element={<Progress />} />
-          <Route path="/food" element={<Food />} />
-          <Route path="/mobility" element={<Mobility />} />
-          <Route path="/settings" element={<Settings />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+        {/* Keyed by path so each page plays the entry animation. */}
+        <div className="route" key={location.pathname}>
+          <Routes>
+            <Route path="/" element={<Today />} />
+            <Route path="/workout" element={<Workout />} />
+            <Route path="/summary/:id" element={<WorkoutSummary />} />
+            <Route path="/cardio/:kind" element={<Cardio />} />
+            <Route path="/plan" element={<Plan />} />
+            <Route path="/progress" element={<Progress />} />
+            <Route path="/food" element={<Food />} />
+            <Route path="/mobility" element={<Mobility />} />
+            <Route path="/settings" element={<Settings />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </div>
       </main>
       <nav className="nav" aria-label="Main">
         <div className="nav-inner">

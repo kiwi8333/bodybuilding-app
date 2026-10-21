@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { TRACKS, isPerSide, levelDemoId } from '../data/tracks.js'
 import { findSwap, swapDemoId, swapsFor } from '../data/swaps.js'
 import { formatKg } from '../logic/weights.js'
@@ -9,6 +9,7 @@ import { formatDate } from '../lib/format.js'
 import { CheckIcon } from './icons.jsx'
 import ExerciseDemo from './ExerciseDemo.jsx'
 import CoachBox from './CoachBox.jsx'
+import { haptic } from '../lib/alerts.js'
 
 const MAX_VALUE = { weighted: 100, reps: 100, hold: 600 }
 const RIR_OPTIONS = [
@@ -48,6 +49,14 @@ export default function ExerciseCard({
   const [error, setError] = useState(null)
   const [showDemo, setShowDemo] = useState(false)
   const [remember, setRemember] = useState(false)
+  // The set just ticked off (for the pop and burst) and whether that tick
+  // finished the exercise (for the card glow). Cleared after the animation.
+  const [celebrate, setCelebrate] = useState(null)
+  useEffect(() => {
+    if (!celebrate) return undefined
+    const t = setTimeout(() => setCelebrate(null), 1100)
+    return () => clearTimeout(t)
+  }, [celebrate])
   const valueLabel = track.type === 'hold' ? 'Secs' : 'Reps'
 
   function toggle(setIndex) {
@@ -65,6 +74,13 @@ export default function ExerciseCard({
       }
     }
     onToggleDone(index, setIndex, !set.done, track.restSeconds)
+    if (set.done) {
+      haptic('tap')
+      return
+    }
+    const finishesExercise = doneCount + 1 >= exercise.target.sets && doneCount < exercise.target.sets
+    haptic(finishesExercise ? 'complete' : 'success')
+    setCelebrate({ setIndex, exercise: finishesExercise, key: Date.now() })
   }
 
   const guard = (fn) => (...args) => {
@@ -77,14 +93,14 @@ export default function ExerciseCard({
   }
 
   return (
-    <section className="card" aria-labelledby={`ex-${index}`}>
+    <section className={`card ${celebrate?.exercise ? 'ex-complete' : ''}`} aria-labelledby={`ex-${index}`}>
       <div className="stack" style={{ gap: 4 }}>
         <div className="row between" style={{ alignItems: 'flex-start' }}>
           <span className="eyebrow">
             {track.pattern} · {swap ? 'Swap' : `Level ${exercise.levelIndex + 1}/${track.levels.length}`}
             {deload ? ' · Deload' : ''}
           </span>
-          <span className={`pill ${doneCount >= exercise.target.sets ? 'good' : ''}`}>
+          <span key={doneCount} className={`pill ${doneCount >= exercise.target.sets ? 'good' : ''} ${celebrate ? 'pill-bump' : ''}`}>
             {doneCount}/{exercise.sets.length}
           </span>
         </div>
@@ -132,7 +148,7 @@ export default function ExerciseCard({
         </div>
         {exercise.sets.map((set, j) => (
           <div key={j} className="set-block">
-            <div className={`set-row ${set.done ? 'done' : ''}`}>
+            <div className={`set-row ${set.done ? 'done' : ''} ${celebrate?.setIndex === j ? 'just-done' : ''}`}>
               <span className="num">{j + 1}</span>
               {track.type === 'weighted' ? (
                 <select
@@ -172,6 +188,13 @@ export default function ExerciseCard({
               />
               <button className={`check ${set.done ? 'on' : ''}`} onClick={() => toggle(j)} aria-pressed={set.done} aria-label={set.done ? `Undo set ${j + 1}` : `Complete set ${j + 1}`}>
                 <CheckIcon />
+                {celebrate?.setIndex === j && (
+                  <span className={`burst ${celebrate.exercise ? 'big' : ''}`} key={celebrate.key} aria-hidden>
+                    {Array.from({ length: celebrate.exercise ? 12 : 8 }, (_, k) => (
+                      <i key={k} style={{ '--a': `${(360 / (celebrate.exercise ? 12 : 8)) * k}deg` }} />
+                    ))}
+                  </span>
+                )}
               </button>
             </div>
             {set.done && track.type !== 'hold' && (

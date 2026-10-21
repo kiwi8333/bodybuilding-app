@@ -46,6 +46,13 @@ export function vibrate(pattern) {
   }
 }
 
+// Short taps for in-app feedback (Android; iPhone browsers have no vibration).
+const HAPTICS = { tap: 8, success: [14, 40, 22], complete: [18, 50, 18, 50, 70] }
+
+export function haptic(kind = 'tap') {
+  vibrate(HAPTICS[kind] ?? HAPTICS.tap)
+}
+
 export function alertDone() {
   beep({ times: 3 })
   vibrate([200, 100, 200, 100, 200])

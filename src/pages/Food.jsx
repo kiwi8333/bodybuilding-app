@@ -16,6 +16,34 @@ import {
 import { formatDate } from '../lib/format.js'
 import { addDays } from '../reminders/schedule.js'
 import FoodSearch from '../components/FoodSearch.jsx'
+import CountUp from '../components/CountUp.jsx'
+import ProgressRing from '../components/ProgressRing.jsx'
+
+// Calories as a ring: what is left today in the middle, amber once over target.
+function CalorieRing({ value, target }) {
+  const left = target - value
+  const over = left < 0
+  return (
+    <div className="calorie-ring">
+      <ProgressRing value={value} max={target} size={112} stroke={10} tone={over ? 'warn' : 'accent'} label="Calories eaten">
+        <span className="ring-big">
+          <CountUp value={Math.abs(left)} />
+        </span>
+        <span className="ring-small">{over ? 'kcal over' : 'kcal left'}</span>
+      </ProgressRing>
+      <div className="stack" style={{ gap: 4 }}>
+        <span className="coach-label">Calories</span>
+        <div className="meter-value">
+          <strong>
+            <CountUp value={value} />
+          </strong>
+          <span className="muted"> / {target.toLocaleString()} kcal</span>
+        </div>
+        <span className="hint">{over ? 'Over the target for this day.' : 'Eaten so far'}</span>
+      </div>
+    </div>
+  )
+}
 
 function Meter({ label, value, target, unit, range }) {
   const pct = target ? Math.min(100, (value / target) * 100) : 0
@@ -29,7 +57,9 @@ function Meter({ label, value, target, unit, range }) {
         </span>
       </div>
       <div className="meter-value">
-        <strong>{value.toLocaleString()}</strong>
+        <strong>
+          <CountUp value={value} decimals={1} />
+        </strong>
         <span className="muted"> / {target.toLocaleString()} {unit}</span>
       </div>
       <div className="progress" role="meter" aria-valuemin={0} aria-valuemax={target} aria-valuenow={value} aria-label={label}>
@@ -271,7 +301,7 @@ export default function Food() {
         </div>
         {targets.ready ? (
           <div className="stack" style={{ gap: 14 }}>
-            <Meter label="Calories" value={totals.kcal} target={targets.kcal} unit="kcal" />
+            <CalorieRing value={totals.kcal} target={targets.kcal} />
             <Meter label="Protein" value={totals.protein} target={targets.protein} unit="g" range={targets.proteinRange} />
           </div>
         ) : targets.protein ? (

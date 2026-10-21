@@ -15,6 +15,8 @@ import {
 } from '../logic/state.js'
 import ExerciseCard from '../components/ExerciseCard.jsx'
 import RestTimer from '../components/RestTimer.jsx'
+import ProgressRing from '../components/ProgressRing.jsx'
+import CountUp from '../components/CountUp.jsx'
 import { useNow } from '../components/useNow.js'
 import { formatClock } from '../lib/format.js'
 import { unlockAudio } from '../lib/alerts.js'
@@ -81,8 +83,11 @@ export default function Workout() {
             <strong style={{ fontVariantNumeric: 'tabular-nums' }}>{formatClock(elapsed)}</strong>
           </div>
           <div className="row">
+            <ProgressRing value={doneSets} max={totalSets} size={38} stroke={4} tone={doneSets >= totalSets && totalSets > 0 ? 'good' : 'accent'} label="Sets completed">
+              <span className="ring-num">{Math.round((doneSets / Math.max(1, totalSets)) * 100)}%</span>
+            </ProgressRing>
             <span className="small muted">
-              {doneSets}/{totalSets} sets
+              <CountUp value={doneSets} />/{totalSets} sets
             </span>
             <button className="btn primary small" onClick={finish}>
               Finish

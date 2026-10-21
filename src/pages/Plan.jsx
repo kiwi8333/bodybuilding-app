@@ -12,6 +12,7 @@ import { prescribe } from '../logic/progression.js'
 import { formatKg } from '../logic/weights.js'
 import ExerciseDemo from '../components/ExerciseDemo.jsx'
 import CoachBox from '../components/CoachBox.jsx'
+import ExercisePurpose from '../components/ExercisePurpose.jsx'
 import { useDialogs } from '../components/Dialogs.jsx'
 
 const TABS = [
@@ -132,6 +133,7 @@ function ExerciseRow({ number, trackId, state, open, onToggle, onChooseLevel, on
       </button>
       {open && (
         <div className="ex-row-body">
+          <ExercisePurpose trackId={trackId} levelIndex={p.levelIndex} swapped={Boolean(swap)} showMuscles={false} />
           <ExerciseDemo key={demoId} levelId={demoId} name={shownName} />
           <CoachBox trackId={trackId} levelIndex={p.levelIndex} target={p} showWhy={!swap} />
           {swap && <p className="small text-2">{swap.why} Progression on {level.name} is paused while this swap is in use.</p>}

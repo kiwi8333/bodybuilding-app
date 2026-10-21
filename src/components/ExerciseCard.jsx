@@ -10,6 +10,7 @@ import { CheckIcon } from './icons.jsx'
 import ExerciseDemo from './ExerciseDemo.jsx'
 import CoachBox from './CoachBox.jsx'
 import SwipeRow from './SwipeRow.jsx'
+import ExercisePurpose from './ExercisePurpose.jsx'
 import { haptic } from '../lib/alerts.js'
 
 const MAX_VALUE = { weighted: 100, reps: 100, hold: 600 }
@@ -111,6 +112,7 @@ export default function ExerciseCard({
           Do: <strong>{targetText(exercise.trackId, exercise.levelIndex, exercise.target)}</strong>
           {swap?.perSide && !isPerSide(track, exercise.levelIndex) ? ' · each side' : ''} · rest {track.restSeconds} s
         </p>
+        <ExercisePurpose trackId={exercise.trackId} levelIndex={exercise.levelIndex} swapped={Boolean(swap)} />
         {perSide && <p className="hint">Do every set on both sides. Log the reps of your weaker side.</p>}
         {swap && <p className="banner warn small">Swapped for {level.name}. Progression on it is paused while you use this swap.</p>}
         {exercise.target.note && <p className="banner warn small">{exercise.target.note}</p>}

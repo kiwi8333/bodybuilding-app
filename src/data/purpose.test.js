@@ -16,3 +16,10 @@ describe('what each exercise does', () => {
     for (const id of Object.keys(LEVEL_ADDS)) expect(levelIds.has(id), id).toBe(true)
   })
 })
+
+describe('coaching notes', () => {
+  it('every exercise has a "Why" note', async () => {
+    const { TRACK_COACHING } = await import('./coaching.js')
+    for (const track of Object.values(TRACKS)) expect(TRACK_COACHING[track.id]?.length, track.id).toBeGreaterThan(60)
+  })
+})

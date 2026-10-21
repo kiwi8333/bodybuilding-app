@@ -15,6 +15,21 @@ export const TRACK_COACHING = {
   triceps: 'Overhead extensions stretch the long head of the triceps, the biggest part of your arm. Two sets with a deep, controlled stretch is plenty.',
   deadBug: 'Core control, not endurance. Slow reps with your lower back pressed flat teach your abs to protect your spine during every other lift.',
   plank: 'Short, tight holds beat long saggy ones. End each hold the moment your hips drop, then rest and repeat.',
+
+  gymSquat: 'Heavy compound lifts build the most strength in the 6–10 range. The full 2 minutes of rest lets your legs and breathing recover, so every set is heavy and clean rather than rushed.',
+  gymBench: 'Pressing heavy for 6–10 reps builds strength and size together. Rest the full 2 minutes, set the safety arms, and stop each set with a rep or two left so the bar always goes up.',
+  gymPulldown: '8–12 controlled reps suit the back: heavy enough to grow, light enough to feel your lats instead of yanking with your arms. Pull to the chest and let the bar rise all the way every rep.',
+  gymHinge: 'Hinges load your lower back as well as your hamstrings, so 8–12 reps with strict form beat heavy singles. Two minutes of rest keeps your back fresh enough to stay flat on every rep.',
+  gymLateral: 'Side delts are small and recover fast, so 2 sets of 12–20 with strict form work best. If you have to swing the dumbbells up, the weight is too heavy.',
+  gymPushdown: 'Your triceps already work hard on bench and shoulder press, so 2 focused sets are enough extra. The cable keeps tension on them the whole rep, which suits 10–15 controlled reps.',
+  gymKneeRaise: 'Core control, not momentum: 2 sets of 8–15 slow reps where you curl your pelvis up. Once you can do 15 without swinging, the harder hanging versions keep it challenging.',
+  gymLegPress: 'The machine takes balance and back strain out of the picture, so 10–15 reps push your legs close to failure safely. It adds leg work after squats without competing with them for recovery.',
+  gymInclinePress: 'After heavy bench, 8–12 reps with dumbbells add upper-chest work through a longer range. Each arm works on its own, which keeps a stronger side from taking over.',
+  gymCableRow: 'Rows balance all the pressing. 8–12 reps with a squeeze at the stomach make your mid back do the work, and 90 seconds of rest is enough for a muscle group this size.',
+  gymLegCurl: 'Hamstrings respond well to 10–15 reps with a slow lowering. Squats and leg presses barely train knee bending, so this fills the gap and helps protect your knees.',
+  gymShoulderPress: 'Your shoulders already worked on bench, so 8–12 reps with dumbbells is the right dose. Sitting with back support keeps the focus on the shoulders instead of your lower back.',
+  gymCurl: 'Arms already work during pulldowns and rows. Two sets of 10–15 strict reps add biceps growth without eating into your recovery.',
+  gymCableCrunch: 'Abs are a muscle like any other and grow from loaded work. 2 sets of 10–15 with a hard squeeze, keeping your hips still so your abs, not your hip flexors, do the work.',
 }
 
 export function effortText(type) {

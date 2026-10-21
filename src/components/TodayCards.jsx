@@ -12,6 +12,7 @@ import { useDialogs } from './Dialogs.jsx'
 import ProgressRing from './ProgressRing.jsx'
 import { useNow } from './useNow.js'
 import { formatDuration, hoursBetween, planHours, stageAt } from '../logic/fasting.js'
+import { buildReport } from '../logic/report.js'
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 
@@ -186,6 +187,26 @@ export function FastingCard() {
         </Link>
       </div>
     </section>
+  )
+}
+
+// The health report at a glance.
+export function HealthReportCard() {
+  const { state } = useStore()
+  const { counts, tracked } = buildReport(state)
+  return (
+    <Link to="/health" className="card health-link">
+      <ProgressRing value={counts.good} max={Math.max(1, tracked)} size={48} stroke={5} tone={counts.attention ? 'accent' : 'good'} />
+      <span className="stack" style={{ gap: 2, flex: 1, minWidth: 0 }}>
+        <h2>Health report</h2>
+        <span className="small text-2">
+          {tracked === 0 ? 'See what your training does for your body' : `${counts.good} of ${tracked} markers looking good${counts.attention ? ` · ${counts.attention} to work on` : ''}`}
+        </span>
+      </span>
+      <span className="health-chevron" aria-hidden>
+        ›
+      </span>
+    </Link>
   )
 }
 

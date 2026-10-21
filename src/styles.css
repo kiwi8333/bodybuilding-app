@@ -2501,3 +2501,113 @@ h2 {
 .gear-row .grid-2 {
   align-items: end;
 }
+
+/* ---------- Health report ---------- */
+.health-link {
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  text-decoration: none;
+  color: inherit;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.14s var(--ease-out);
+}
+
+.health-link:active {
+  transform: scale(0.98);
+}
+
+.health-chevron {
+  font-size: 1.6rem;
+  color: var(--muted);
+  line-height: 1;
+}
+
+.snapshot {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.marker-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.marker {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--surface-2);
+  border-left: 3px solid transparent;
+}
+
+.marker-good {
+  border-left-color: var(--good);
+}
+
+.marker-ok {
+  border-left-color: var(--accent);
+}
+
+.marker-attention {
+  border-left-color: var(--warn);
+}
+
+.marker-none {
+  opacity: 0.85;
+}
+
+.marker-value {
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.marker-change {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-2);
+}
+
+.marker-why summary {
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 650;
+  color: var(--accent);
+}
+
+.marker-why p {
+  margin-top: 6px;
+}
+
+.benefit-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.benefit-list li {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.benefit-dot {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  margin-top: 6px;
+  border-radius: 50%;
+  background: var(--good);
+  box-shadow: 0 0 0 4px var(--good-soft);
+}
+
+.benefit-dot.warn {
+  background: var(--warn);
+  box-shadow: 0 0 0 4px var(--warn-soft);
+}

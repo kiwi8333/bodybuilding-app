@@ -41,6 +41,8 @@ export function createInitialState() {
     // Where you train: picks Workout A/B (home) or Gym A/B.
     trainAt: 'home',
     fasting: initialFasting(),
+    // Resting heart rate and blood pressure readings, newest last.
+    healthChecks: [],
     ui: { dumbbellAlertDismissedCount: 0 },
   }
 }
@@ -480,6 +482,34 @@ export function addMeasurement(state, date, values) {
   return { ...state, measurements: [...rest, entry].sort((a, b) => a.date.localeCompare(b.date)) }
 }
 
+// One reading per day: resting heart rate and/or blood pressure. The latest
+// resting heart rate also updates the heart-rate zones.
+export function addHealthCheck(state, date, { restingHr, systolic, diastolic }) {
+  if (!DATE_RE.test(date)) throw new Error('Pick a valid date.')
+  const hr = validateHr(restingHr, { min: 30, max: 120, label: 'Resting heart rate' })
+  const sys = validateHr(systolic, { min: 70, max: 250, label: 'Systolic (top number)' })
+  const dia = validateHr(diastolic, { min: 40, max: 150, label: 'Diastolic (bottom number)' })
+  if ((sys === null) !== (dia === null)) throw new Error('Enter both blood pressure numbers, or neither.')
+  if (sys !== null && sys <= dia) throw new Error('The top number must be higher than the bottom number.')
+  if (hr === null && sys === null) throw new Error('Enter a resting heart rate or a blood pressure reading.')
+  const entry = { date, restingHr: hr, systolic: sys, diastolic: dia }
+  const healthChecks = [...state.healthChecks.filter((c) => c.date !== date), entry].sort((a, b) => a.date.localeCompare(b.date))
+  let next = { ...state, healthChecks }
+  const latestHr = healthChecks.filter((c) => c.restingHr !== null).at(-1)?.restingHr
+  if (latestHr != null && latestHr !== state.heart.restingHr) {
+    try {
+      next = updateHeart(next, { maxHr: state.heart.maxHr, restingHr: latestHr })
+    } catch {
+      // A resting rate that clashes with a stored max HR stays a reading only.
+    }
+  }
+  return next
+}
+
+export function deleteHealthCheck(state, date) {
+  return { ...state, healthChecks: state.healthChecks.filter((c) => c.date !== date) }
+}
+
 export function deleteMeasurement(state, date) {
   return { ...state, measurements: state.measurements.filter((e) => e.date !== date) }
 }
@@ -909,8 +939,21 @@ function checkV2Sections(raw, workoutCount) {
     lastBackupAt: raw.lastBackupAt,
     trainAt: raw.trainAt ?? 'home',
     fasting: normalizeFasting(raw.fasting, fail),
+    healthChecks: checkHealthChecks(raw.healthChecks),
     ui: { dumbbellAlertDismissedCount: raw.ui.dumbbellAlertDismissedCount },
   }
+}
+
+function checkHealthChecks(list) {
+  if (list === undefined) return []
+  if (!Array.isArray(list)) fail('healthChecks', 'not a list')
+  const intOrNull = (v, lo, hi) => v === null || v === undefined || (Number.isInteger(v) && v >= lo && v <= hi)
+  return list.map((c, i) => {
+    const p = `healthChecks[${i}]`
+    if (!isObj(c) || !DATE_RE.test(c.date)) fail(p, 'invalid entry')
+    if (!intOrNull(c.restingHr, 30, 120) || !intOrNull(c.systolic, 70, 250) || !intOrNull(c.diastolic, 40, 150)) fail(p, 'invalid reading')
+    return { date: c.date, restingHr: c.restingHr ?? null, systolic: c.systolic ?? null, diastolic: c.diastolic ?? null }
+  })
 }
 
 // Goal weight and pace were added after version 2 shipped; older saves lack them.

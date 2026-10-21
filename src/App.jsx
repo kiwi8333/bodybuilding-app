@@ -18,6 +18,7 @@ const Settings = lazy(() => import('./pages/Settings.jsx'))
 const Food = lazy(() => import('./pages/Food.jsx'))
 const Mobility = lazy(() => import('./pages/Mobility.jsx'))
 const Fasting = lazy(() => import('./pages/Fasting.jsx'))
+const Health = lazy(() => import('./pages/Health.jsx'))
 
 const pageFallback = (
   <section className="card">
@@ -105,6 +106,7 @@ export default function App() {
               <Route path="/progress" element={<Progress />} />
               <Route path="/food" element={<Food />} />
               <Route path="/fast" element={<Fasting />} />
+              <Route path="/health" element={<Health />} />
               <Route path="/mobility" element={<Mobility />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="*" element={<Navigate to="/" replace />} />

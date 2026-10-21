@@ -530,7 +530,7 @@ export default function Plan() {
         <h1>The plan</h1>
       </div>
 
-      <div className="segmented" role="tablist" aria-label="Plan sections">
+      <div className="segmented tight" role="tablist" aria-label="Plan sections">
         {TABS.map(([id, label]) => (
           <button key={id} role="tab" aria-selected={tab === id} className={tab === id ? 'on' : ''} onClick={() => setTab(id)}>
             {label}

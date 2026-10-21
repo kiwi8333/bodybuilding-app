@@ -2667,3 +2667,16 @@ h2 {
 .app .page-head {
   padding-right: 52px;
 }
+
+/* Three-way tabs with longer labels stay on one line on phones. */
+.segmented.tight button {
+  white-space: nowrap;
+  font-size: 0.86rem;
+  padding-inline: 4px;
+}
+
+/* Banner links ("Back up") never break across lines. */
+.banner .link-btn {
+  flex: none;
+  white-space: nowrap;
+}

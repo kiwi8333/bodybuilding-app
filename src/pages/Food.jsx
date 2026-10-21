@@ -401,7 +401,7 @@ function AddFood({ onAdd: addToLog, customFoods, onSaveCustom, onDeleteCustom })
           </button>
         ))}
       </div>
-      <div className="segmented" role="tablist">
+      <div className="segmented tight" role="tablist" aria-label="How to add food">
         <button role="tab" aria-selected={mode === 'search'} className={mode === 'search' ? 'on' : ''} onClick={() => setMode('search')}>
           Search & scan
         </button>

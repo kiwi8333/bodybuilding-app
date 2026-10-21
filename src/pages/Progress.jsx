@@ -438,15 +438,6 @@ export default function Progress() {
           <span className="label">{state.cardio.phase === 'builder' ? 'Run Builder stage' : 'Can run 20 min'}</span>
         </div>
       </div>
-      <Link to="/health" className="card health-link">
-        <span className="stack" style={{ gap: 2, flex: 1 }}>
-          <h2>Health report</h2>
-          <span className="small text-2">Weight, waist, heart, strength and habits together, with what they mean for your body.</span>
-        </span>
-        <span className="health-chevron" aria-hidden>
-          ›
-        </span>
-      </Link>
       {state.workouts.length === 0 && (
         <section className="card">
           <EmptyState

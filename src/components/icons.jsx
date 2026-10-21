@@ -59,3 +59,10 @@ export const FastIcon = () => (
     <path d="M12 9v4l2.5 2.5M10 2h4M12 2v3" />
   </svg>
 )
+
+export const HealthIcon = () => (
+  <svg {...base}>
+    <path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z" />
+    <path d="M3 12h4l2-3 3 6 2-3h7" />
+  </svg>
+)

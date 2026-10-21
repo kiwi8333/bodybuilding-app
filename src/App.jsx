@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect } from 'react'
-import { Navigate, NavLink, Route, Routes, useLocation } from 'react-router-dom'
+import { Link, Navigate, NavLink, Route, Routes, useLocation } from 'react-router-dom'
 import { useStore } from './store/StoreContext.jsx'
-import { FastIcon, FoodIcon, PlanIcon, ProgressIcon, SettingsIcon, TodayIcon } from './components/icons.jsx'
+import { FastIcon, FoodIcon, HealthIcon, PlanIcon, ProgressIcon, SettingsIcon, TodayIcon } from './components/icons.jsx'
 import Onboarding from './pages/Onboarding.jsx'
 import Today from './pages/Today.jsx'
 import { SkeletonRows } from './components/EmptyState.jsx'
@@ -33,7 +33,7 @@ const NAV = [
   { to: '/food', label: 'Food', Icon: FoodIcon },
   { to: '/fast', label: 'Fast', Icon: FastIcon },
   { to: '/progress', label: 'Progress', Icon: ProgressIcon },
-  { to: '/settings', label: 'Settings', Icon: SettingsIcon },
+  { to: '/health', label: 'Health', Icon: HealthIcon },
 ]
 
 export default function App() {
@@ -93,6 +93,13 @@ export default function App() {
   return (
     <>
       <main className="app page">
+        {/* Settings lives behind a gear in the top-right corner. The workout
+            screen has its own sticky bar there, so the gear steps aside. */}
+        {location.pathname !== '/workout' && (
+          <Link to="/settings" className={`gear-btn ${location.pathname === '/settings' ? 'on' : ''}`} aria-label="Settings" aria-current={location.pathname === '/settings' ? 'page' : undefined}>
+            <SettingsIcon />
+          </Link>
+        )}
         {banners}
         {/* Keyed by path so each page plays the entry animation. */}
         <div className="route" key={location.pathname}>

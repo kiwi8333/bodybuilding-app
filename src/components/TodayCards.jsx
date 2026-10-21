@@ -70,7 +70,7 @@ export function TodayAlerts() {
   if (lastDate && yesterdayPlanned && lastDate < yesterday && !state.activeWorkout) {
     cards.push(
       <p className="banner warn small" key="missed">
-        Missed {DAY_NAMES[(now.getDay() + 6) % 7]}’s session? No problem: do {WORKOUTS[nextWorkoutId(state.workouts)].name} today and keep a rest day before the next one.
+        Missed {DAY_NAMES[(now.getDay() + 6) % 7]}’s session? No problem: do {WORKOUTS[nextWorkoutId(state.workouts, state.trainAt)].name} today and keep a rest day before the next one.
       </p>,
     )
   }

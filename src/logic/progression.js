@@ -1,5 +1,5 @@
 import { repRange } from '../data/tracks.js'
-import { availableWeights, nextWeightDown, nextWeightUp, roundDownToAvailable, sameWeight } from './weights.js'
+import { availableWeights, equipmentFor, nextWeightDown, nextWeightUp, roundDownToAvailable, sameWeight } from './weights.js'
 
 // A missed session is one where any set fell below the bottom of the rep
 // range, or fewer sets than prescribed were completed. Two misses in a row at
@@ -28,12 +28,12 @@ export function initialTrackState(track, equipment) {
 }
 
 function startWeightFor(level, equipment) {
-  const weights = availableWeights(equipment, { allowBodyweight: level.allowBodyweight })
+  const weights = weightsForLevel(level, equipment)
   return roundDownToAvailable(level.startWeight ?? weights[0], weights)
 }
 
-function weightsForLevel(level, equipment) {
-  return availableWeights(equipment, { allowBodyweight: level.allowBodyweight })
+export function weightsForLevel(level, equipment) {
+  return availableWeights(equipmentFor(level, equipment), { allowBodyweight: level.allowBodyweight })
 }
 
 // What to do today for a track.
@@ -210,9 +210,11 @@ function advanceLevel(track, base, levelIndex, usedWeight, equipment) {
       state: { ...base, weight: usedWeight, missStreak: 0 },
       outcome: 'maxed',
       message:
-        track.type === 'weighted'
-          ? 'You have beaten the hardest version with your heaviest dumbbells. Keep every rep slow and strict, or get heavier dumbbells and raise the max in Settings.'
-          : 'You have beaten the hardest version. Slow each rep down (4 s lowering) to keep it challenging.',
+        track.type !== 'weighted'
+          ? 'You have beaten the hardest version. Slow each rep down (4 s lowering) to keep it challenging.'
+          : track.location === 'gym'
+            ? 'You have beaten the hardest version at the heaviest weight the app tracks. Keep every rep slow and strict.'
+            : 'You have beaten the hardest version with your heaviest dumbbells. Keep every rep slow and strict, or get heavier dumbbells and raise the max in Settings.',
     }
   }
   const next = track.levels[nextIndex]

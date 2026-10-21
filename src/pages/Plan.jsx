@@ -1,11 +1,11 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useStore } from '../store/StoreContext.jsx'
-import { WARM_UP, WARM_UP_MINUTES, WORKOUTS, estimateLiftMinutes, nextWorkoutId } from '../data/program.js'
-import { TRACKS, isPerSide, repRange } from '../data/tracks.js'
+import { LOCATIONS, WARM_UP_MINUTES, WORKOUTS, estimateLiftMinutes, nextWorkoutId, warmUpFor, workoutsAt } from '../data/program.js'
+import { TRACKS, isPerSide, levelDemoId, repRange } from '../data/tracks.js'
 import { BUILDER_STAGES, FITNESS_ROTATION, REST_DAY_WALK, currentCardioStage, totalSeconds } from '../data/cardio.js'
 import { CARDIO_COACHING, WEEKLY_GUIDE } from '../data/coaching.js'
-import { beginDeload, setTrackLevel, setTrackSwap } from '../logic/state.js'
+import { beginDeload, setTrackLevel, setTrackSwap, setTrainAt } from '../logic/state.js'
 import { DELOAD_WORKOUTS, WORKOUTS_BETWEEN_DELOADS, workoutsSinceDeload } from '../logic/deload.js'
 import { findSwap, swapDemoId, swapsFor } from '../data/swaps.js'
 import { prescribe } from '../logic/progression.js'
@@ -27,7 +27,11 @@ function Chevron({ open }) {
   )
 }
 
-function WeekCard({ first }) {
+// "Workout A" / "Gym A" → "A"
+const shortName = (workoutId) => WORKOUTS[workoutId].name.split(' ').at(-1)
+
+function WeekCard({ next }) {
+  const first = shortName(next)
   const second = first === 'A' ? 'B' : 'A'
   const days = [
     { d: 'Mon', kind: 'lift', w: first },
@@ -100,7 +104,7 @@ function ExerciseRow({ number, trackId, state, open, onToggle, onChooseLevel, on
   const level = track.levels[p.levelIndex]
   const swap = ts.swapId ? findSwap(trackId, ts.swapId) : null
   const shownName = swap ? swap.name : level.name
-  const demoId = swap ? swapDemoId(swap) : level.id
+  const demoId = swap ? swapDemoId(swap) : levelDemoId(level)
   const chips = [`${p.sets} sets`, `${p.low}–${p.high}${track.type === 'hold' ? ' s' : ' reps'}${swap?.perSide || isPerSide(track, p.levelIndex) ? ' / side' : ''}`]
   if (track.type === 'weighted') chips.push(p.weight === 0 ? 'Bodyweight' : formatKg(p.weight))
   chips.push(`Rest ${track.restSeconds} s`)
@@ -187,10 +191,13 @@ function ExerciseRow({ number, trackId, state, open, onToggle, onChooseLevel, on
 }
 
 function LiftingTab({ state, apply }) {
-  const next = nextWorkoutId(state.workouts)
-  const [selected, setSelected] = useState(next)
+  const next = nextWorkoutId(state.workouts, state.trainAt)
+  const [chosen, setSelected] = useState(next)
   const [openTrack, setOpenTrack] = useState(null)
+  // Switching home/gym shows that location's next workout.
+  const selected = WORKOUTS[chosen].location === state.trainAt ? chosen : next
   const workout = WORKOUTS[selected]
+  const warmUp = warmUpFor(selected)
   const liftMin = estimateLiftMinutes(selected, state.tracks)
   const cardioMin = Math.round(totalSeconds(currentCardioStage(state.cardio)) / 60)
   const totalSets = workout.trackIds.reduce((n, id) => n + TRACKS[id].sets, 0)
@@ -216,7 +223,30 @@ function LiftingTab({ state, apply }) {
 
   return (
     <>
-      <WeekCard first={next} />
+      <section className="card">
+        <div className="segmented" role="radiogroup" aria-label="Where are you training?">
+          {LOCATIONS.map((l) => (
+            <button
+              key={l.id}
+              role="radio"
+              aria-checked={state.trainAt === l.id}
+              className={state.trainAt === l.id ? 'on' : ''}
+              onClick={() => {
+                apply((s) => setTrainAt(s, l.id))
+                setOpenTrack(null)
+              }}
+            >
+              {l.label}
+            </button>
+          ))}
+        </div>
+        <p className="small text-2">
+          {state.trainAt === 'gym'
+            ? 'Gym A and B use barbells, machines and cables, with weights set on whatever the exercise uses. Your home progress is kept as it is.'
+            : 'Workout A and B use your dumbbells and furniture at home. Switch to Gym when you train in a full gym; your progress here is kept.'}
+        </p>
+      </section>
+      <WeekCard next={next} />
       <SessionFlow liftMin={liftMin} cardioMin={cardioMin} />
 
       <section className="card">
@@ -261,7 +291,7 @@ function LiftingTab({ state, apply }) {
 
       <section className="card">
         <div className="segmented" role="tablist" aria-label="Choose workout">
-          {Object.values(WORKOUTS).map((w) => (
+          {workoutsAt(state.trainAt).map((w) => (
             <button
               key={w.id}
               role="tab"
@@ -307,7 +337,7 @@ function LiftingTab({ state, apply }) {
           <p className="small text-2">{WARM_UP_MINUTES} minutes before every session. It raises your body temperature and grooves the movements.</p>
         </div>
         <ol className="cues">
-          {WARM_UP.map((w) => (
+          {warmUp.map((w) => (
             <li key={w.id}>{w.text}</li>
           ))}
         </ol>

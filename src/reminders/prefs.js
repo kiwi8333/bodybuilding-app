@@ -6,7 +6,7 @@ import { dateKey } from '../logic/state.js'
 // weights, food, body data) ever leaves the phone, and even this is sealed.
 export function buildPrefs(state, { timezone, since }) {
   const latest = [...state.workouts].sort((a, b) => a.finishedAt.localeCompare(b.finishedAt)).at(-1)
-  const next = nextWorkoutId(state.workouts)
+  const next = nextWorkoutId(state.workouts, state.trainAt)
   return {
     timezone,
     days: state.reminders.days,

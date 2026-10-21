@@ -13,6 +13,7 @@ import {
   normalizeState,
   parseBackup,
   serializeBackup,
+  setTrainAt,
   setWeightFrom,
   startWorkout,
   updateEquipment,
@@ -220,5 +221,52 @@ describe('validation and backup', () => {
   it('rejects non-backup files', () => {
     expect(() => parseBackup('not json')).toThrow(/valid JSON/)
     expect(() => parseBackup(JSON.stringify({ app: 'other', data: {} }))).toThrow(/not a Forge backup/)
+  })
+})
+
+describe('gym workouts', () => {
+  it('home and gym keep separate A/B rotations', () => {
+    const history = [
+      { workoutId: 'A', finishedAt: '2026-09-01T10:00:00Z' },
+      { workoutId: 'GA', finishedAt: '2026-09-03T10:00:00Z' },
+    ]
+    expect(nextWorkoutId([], 'gym')).toBe('GA')
+    expect(nextWorkoutId(history, 'gym')).toBe('GB')
+    expect(nextWorkoutId(history, 'home')).toBe('B')
+    expect(nextWorkoutId(history)).toBe('B')
+  })
+
+  it('suggests weights on the gear each exercise uses, not the home dumbbells', () => {
+    let s = startWorkout(setTrainAt(onboarded(), 'gym'), 'GA', new Date('2026-09-14T09:00:00Z'))
+    const target = (trackId) => s.activeWorkout.exercises.find((e) => e.trackId === trackId).target
+    expect(target('gymSquat').weight).toBe(40) // barbell, above the 15 kg home max
+    expect(target('gymPulldown').weight).toBe(30)
+
+    s = finishWorkout(logAll(s, 99), new Date('2026-09-14T10:00:00Z'))
+    expect(s.tracks.gymSquat.weight).toBe(42.5) // smallest barbell jump
+    expect(s.tracks.gymLateral.weight).toBe(7.5) // gym dumbbells, 2.5 kg steps
+    expect(s.tracks.gymKneeRaise.levelIndex).toBe(1)
+    expect(s.tracks.squat.lastPerformedAt).toBeNull() // home progress untouched
+    expect(nextWorkoutId(s.workouts, 'gym')).toBe('GB')
+    expect(nextWorkoutId(s.workouts, 'home')).toBe('A')
+  })
+
+  it('keeps gym weights when the home dumbbells change', () => {
+    const s = updateEquipment(onboarded(), { minWeight: 2, increment: 2, maxWeight: 12 })
+    expect(s.tracks.gymSquat.weight).toBe(40)
+    expect(s.tracks.gymLegPress.weight).toBe(40)
+  })
+
+  it('remembers where you train, and loads data saved before the choice existed', () => {
+    const s = setTrainAt(onboarded(), 'gym')
+    expect(normalizeState(JSON.parse(serializeBackup(s)).data).trainAt).toBe('gym')
+    const old = JSON.parse(JSON.stringify(onboarded()))
+    delete old.trainAt
+    for (const id of ['gymSquat', 'gymBench']) delete old.tracks[id]
+    const loaded = normalizeState(old)
+    expect(loaded.trainAt).toBe('home')
+    expect(loaded.tracks.gymSquat.weight).toBe(40)
+    expect(() => setTrainAt(s, 'beach')).toThrow()
+    expect(() => normalizeState({ ...old, trainAt: 'beach' })).toThrow(/trainAt/)
   })
 })

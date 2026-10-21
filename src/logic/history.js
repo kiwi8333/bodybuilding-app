@@ -126,7 +126,7 @@ export function workoutMinutes(record) {
 export function outgrownDumbbells(state) {
   const out = []
   for (const track of Object.values(TRACKS)) {
-    if (track.type !== 'weighted') continue
+    if (track.type !== 'weighted' || track.location === 'gym') continue
     const s = state.tracks[track.id]
     const atMax = s.weight !== null && Math.round(s.weight * 100) >= Math.round(state.equipment.maxWeight * 100)
     if (atMax || s.levelIndex > 0) out.push({ trackId: track.id, name: track.levels[s.levelIndex].name, atMax, levelIndex: s.levelIndex })

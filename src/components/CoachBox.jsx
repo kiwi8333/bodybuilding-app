@@ -1,4 +1,4 @@
-import { TRACKS, isPerSide } from '../data/tracks.js'
+import { TRACKS, isPerSide, levelDemoId } from '../data/tracks.js'
 import { tempoText } from '../data/tempo.js'
 import { TRACK_COACHING, effortText } from '../data/coaching.js'
 import { formatKg } from '../logic/weights.js'
@@ -35,7 +35,7 @@ export default function CoachBox({ trackId, levelIndex, target, showWhy = true }
       <dl className="coach-lines">
         <div>
           <dt>Tempo</dt>
-          <dd>{tempoText(level.id)}</dd>
+          <dd>{tempoText(levelDemoId(level))}</dd>
         </div>
         <div>
           <dt>Effort</dt>
@@ -44,9 +44,11 @@ export default function CoachBox({ trackId, levelIndex, target, showWhy = true }
         <div>
           <dt>Progress</dt>
           <dd>
-            {track.type === 'weighted'
-              ? `When every set reaches ${target.high} ${unit}, the app adds weight for next time, or moves you to a harder version once you are at your heaviest dumbbell.`
-              : `When every set reaches ${target.high} ${unit}, you move to the next, harder version.`}
+            {track.type !== 'weighted'
+              ? `When every set reaches ${target.high} ${unit}, you move to the next, harder version.`
+              : track.location === 'gym'
+                ? `When every set reaches ${target.high} ${unit}, the app adds the smallest weight jump for next time.`
+                : `When every set reaches ${target.high} ${unit}, the app adds weight for next time, or moves you to a harder version once you are at your heaviest dumbbell.`}
           </dd>
         </div>
         {showWhy && TRACK_COACHING[trackId] && (

@@ -1,13 +1,20 @@
 import { describe, expect, it } from 'vitest'
-import { TRACKS } from '../data/tracks.js'
+import { TRACKS, levelDemoId } from '../data/tracks.js'
 import { SWAPS, swapDemoId } from '../data/swaps.js'
 import { MOBILITY_ROUTINE } from '../data/mobility.js'
 import { TEMPO, repPhases, repSeconds, tempoText } from '../data/tempo.js'
 import { BONES, FLOOR_Y, VIEWBOX, circleIntersectUpper, dist, skeleton, solveTwoBone } from './rig.js'
-import { movementFor } from './movements.js'
+import { hasMovement, movementFor } from './movements.js'
 import { buildTimeline, frameAt, verticalBounds } from './timeline.js'
 
-const LEVELS_ONLY = Object.values(TRACKS).flatMap((t) => t.levels.map((l) => ({ track: t, level: l })))
+// Levels with their own demo. Gym levels either share one (`demo`) or have no
+// animation; they are checked separately below.
+const LEVELS_ONLY = Object.values(TRACKS)
+  .filter((t) => t.location !== 'gym')
+  .flatMap((t) => t.levels.map((l) => ({ track: t, level: l })))
+const GYM_LEVELS = Object.values(TRACKS)
+  .filter((t) => t.location === 'gym')
+  .flatMap((t) => t.levels)
 // Every animated demo: exercise levels, swaps with their own movement, and mobility.
 const EXTRA_IDS = [
   ...Object.values(SWAPS).flat().map(swapDemoId),
@@ -55,8 +62,21 @@ describe('tempo data', () => {
     }
   })
 
+  it('gym levels have readable tempo text and only share demos that exist', () => {
+    for (const level of GYM_LEVELS) {
+      expect(TEMPO[levelDemoId(level)], level.id).toBeDefined()
+      expect(tempoText(levelDemoId(level)).length, level.id).toBeGreaterThan(3)
+      if (level.demo !== undefined) {
+        expect(hasMovement(level.demo), level.id).toBe(true)
+        expect(TEMPO[level.id], `${level.id} uses its demo's tempo`).toBeUndefined()
+      } else {
+        expect(hasMovement(level.id), `${level.id} has no animation of its own`).toBe(false)
+      }
+    }
+  })
+
   it('has no tempo entries for levels that do not exist', () => {
-    const ids = new Set(ALL_LEVELS.map(({ level }) => level.id))
+    const ids = new Set([...ALL_LEVELS.map(({ level }) => level.id), ...GYM_LEVELS.map((l) => l.id)])
     for (const id of Object.keys(TEMPO)) expect(ids.has(id), id).toBe(true)
   })
 
@@ -189,7 +209,7 @@ describe('paired limbs move together', () => {
   // Near and far hands (and feet) that start and end close together must stay
   // close through the whole rep. Catches arcs taking opposite directions.
   const ids = [
-    ...Object.values(TRACKS).flatMap((t) => t.levels.map((l) => l.id)),
+    ...LEVELS_ONLY.map(({ level }) => level.id),
     ...Object.values(SWAPS).flat().map(swapDemoId),
     ...MOBILITY_ROUTINE.map((m) => m.id),
   ].filter((id, i, all) => all.indexOf(id) === i)

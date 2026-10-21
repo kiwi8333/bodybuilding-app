@@ -1,11 +1,11 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useStore } from '../store/StoreContext.jsx'
-import { WARM_UP_MINUTES, WORKOUTS, estimateLiftMinutes, nextWorkoutId } from '../data/program.js'
+import { LOCATIONS, WARM_UP_MINUTES, WORKOUTS, estimateLiftMinutes, nextWorkoutId } from '../data/program.js'
 import { BUILDER_STAGES, REST_DAY_WALK, currentCardioStage, totalSeconds } from '../data/cardio.js'
 import { TRACKS } from '../data/tracks.js'
 import { prescribe } from '../logic/progression.js'
-import { startWorkout, dateKey } from '../logic/state.js'
+import { startWorkout, dateKey, setTrainAt } from '../logic/state.js'
 import { TARGET_SESSIONS_PER_WEEK, weeklyStreak, workoutsThisWeek } from '../logic/history.js'
 import { targetText } from '../lib/describe.js'
 import { FoodSummaryCard, MobilityCard, TodayAlerts } from '../components/TodayCards.jsx'
@@ -23,7 +23,7 @@ export default function Today() {
   const [error, setError] = useState(null)
   const now = new Date()
 
-  const workoutId = nextWorkoutId(state.workouts)
+  const workoutId = nextWorkoutId(state.workouts, state.trainAt)
   const workout = WORKOUTS[workoutId]
   const cardioStage = currentCardioStage(state.cardio)
   const liftMin = estimateLiftMinutes(workoutId, state.tracks)
@@ -89,6 +89,19 @@ export default function Today() {
         </section>
       ) : (
         <section className="card accent">
+          <div className="segmented" role="radiogroup" aria-label="Where are you training?">
+            {LOCATIONS.map((l) => (
+              <button
+                key={l.id}
+                role="radio"
+                aria-checked={state.trainAt === l.id}
+                className={state.trainAt === l.id ? 'on' : ''}
+                onClick={() => apply((s) => setTrainAt(s, l.id))}
+              >
+                {l.label}
+              </button>
+            ))}
+          </div>
           <div className="row between">
             <span className="pill accent">Next session</span>
             <span className="small muted">~{WARM_UP_MINUTES + liftMin + cardioMin} min</span>
@@ -160,7 +173,8 @@ export default function Today() {
         <h2>Coach’s notes</h2>
         <ul className="cues">
           <li>
-            Train 3 days with a rest day between (e.g. Mon, Wed, Fri). Workouts alternate A and B automatically.
+            Train 3 days with a rest day between (e.g. Mon, Wed, Fri). Workouts alternate A and B automatically, with home and
+            gym sessions each keeping their own rotation.
           </li>
           <li>End each set with 1–2 good reps left in the tank. Form first, always.</li>
           <li>

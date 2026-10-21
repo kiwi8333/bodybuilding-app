@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
 import { useStore } from '../store/StoreContext.jsx'
-import { WARM_UP, WORKOUTS } from '../data/program.js'
+import { WORKOUTS, warmUpFor } from '../data/program.js'
 import {
   addSet,
   changeExerciseLevel,
@@ -34,6 +34,7 @@ export default function Workout() {
   if (!aw) return leaving.current ? null : <Navigate to="/" replace />
 
   const workout = WORKOUTS[aw.workoutId]
+  const warmUp = warmUpFor(aw.workoutId)
   const elapsed = (now - new Date(aw.startedAt).getTime()) / 1000
   const totalSets = aw.exercises.reduce((n, ex) => n + ex.sets.length, 0)
   const doneSets = aw.exercises.reduce((n, ex) => n + ex.sets.filter((s) => s.done).length, 0)
@@ -98,12 +99,12 @@ export default function Workout() {
       )}
 
       <section className="card">
-        <details className="disclosure" open={aw.warmUpDone.length < WARM_UP.length && doneSets === 0}>
+        <details className="disclosure" open={aw.warmUpDone.length < warmUp.length && doneSets === 0}>
           <summary>
-            Warm-up ({aw.warmUpDone.length}/{WARM_UP.length})
+            Warm-up ({aw.warmUpDone.length}/{warmUp.length})
           </summary>
           <ul className="clean check-list">
-            {WARM_UP.map((item) => (
+            {warmUp.map((item) => (
               <li key={item.id}>
                 <input type="checkbox" id={`wu-${item.id}`} checked={aw.warmUpDone.includes(item.id)} onChange={() => apply((s) => toggleWarmUp(s, item.id))} />
                 <label htmlFor={`wu-${item.id}`}>{item.text}</label>

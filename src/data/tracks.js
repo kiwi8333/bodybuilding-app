@@ -10,11 +10,14 @@
 //   'hold'     – timed hold: same as 'reps' but measured in seconds.
 //
 // load (weighted only): 'one' = a single dumbbell, 'pair' = one in each hand.
-// Weight is always logged per dumbbell.
+// Weight is always logged per dumbbell. Gym tracks add barbell and machine
+// loads; see gymTracks.js.
 //
 // entryFactor: when you move up to this level, the suggested weight is the
 // previous weight × entryFactor (rounded down to a weight you own), because
 // the harder variation needs a lighter load to keep form.
+
+import { GYM_TRACKS } from './gymTracks.js'
 
 export const TRACKS = {
   squat: {
@@ -649,6 +652,9 @@ export const TRACKS = {
       },
     ],
   },
+
+  // Full-gym tracks (barbells, machines, cables), used by Gym A and Gym B.
+  ...GYM_TRACKS,
 }
 
 export function getTrack(trackId) {
@@ -663,4 +669,11 @@ export function isPerSide(track, levelIndex) {
 
 export function repRange(track, level) {
   return track.type === 'hold' ? [level.secMin, level.secMax] : [level.repMin, level.repMax]
+}
+
+// The demo (animation and tempo) for a level: its own, or an existing one it
+// shares (some gym levels). Levels with no animation have no movement in
+// demo/movements.js and ExerciseDemo renders nothing for them.
+export function levelDemoId(level) {
+  return level.demo === undefined ? level.id : level.demo
 }

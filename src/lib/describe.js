@@ -1,9 +1,11 @@
 import { TRACKS, isPerSide } from '../data/tracks.js'
 import { formatKg } from '../logic/weights.js'
 
+const LOAD_LABELS = { one: 'one dumbbell', pair: 'per dumbbell', bar: 'total, bar included', stack: 'on the stack' }
+
 export function loadLabel(track, levelIndex) {
   if (track.type !== 'weighted') return ''
-  return track.levels[levelIndex].load === 'one' ? 'one dumbbell' : 'per dumbbell'
+  return LOAD_LABELS[track.levels[levelIndex].load]
 }
 
 // e.g. "3 × 8–12 · 7.5 kg per dumbbell · each side"

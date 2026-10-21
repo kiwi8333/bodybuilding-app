@@ -1,8 +1,16 @@
 // Dumbbell weights are handled in hundredths of a kg internally so that
 // 1.25 kg steps never produce floating-point drift (0.1 + 0.2 problems).
 
+import { GYM_GEAR } from '../data/gymTracks.js'
+
 const toCenti = (kg) => Math.round(kg * 100)
 const fromCenti = (c) => c / 100
+
+// The weight steps a level is loaded with: gym levels use their gear (barbell,
+// gym dumbbells, machine or cable stack); home levels use your dumbbell set.
+export function equipmentFor(level, homeEquipment) {
+  return (level?.gear && GYM_GEAR[level.gear]) || homeEquipment
+}
 
 // Every weight you can load on one dumbbell, ascending.
 // allowBodyweight adds 0 (no dumbbell) for levels where that makes sense.

@@ -3,7 +3,7 @@
 // During a deload: one set fewer per exercise and ~10% less weight, and
 // progression is paused (nothing goes up, nothing counts as a miss).
 
-import { availableWeights, roundDownToAvailable } from './weights.js'
+import { availableWeights, equipmentFor, roundDownToAvailable } from './weights.js'
 
 export const WORKOUTS_BETWEEN_DELOADS = 24
 export const DELOAD_WORKOUTS = 3
@@ -51,6 +51,6 @@ export function cancelDeload(deload, totalWorkouts) {
 export function deloadTarget(track, level, target, equipment) {
   const sets = Math.max(1, target.sets - 1)
   if (track.type !== 'weighted' || target.weight === null) return { ...target, sets }
-  const weights = availableWeights(equipment, { allowBodyweight: level.allowBodyweight })
+  const weights = availableWeights(equipmentFor(level, equipment), { allowBodyweight: level.allowBodyweight })
   return { ...target, sets, weight: roundDownToAvailable(target.weight * DELOAD_LOAD, weights) }
 }

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { TRACKS } from '../data/tracks.js'
+import { GYM_GEAR } from '../data/gymTracks.js'
 import { evaluate, initialTrackState, prescribe } from './progression.js'
 import { availableWeights, formatKg, nextWeightDown, nextWeightUp, roundDownToAvailable } from './weights.js'
 
@@ -234,7 +235,9 @@ describe('track data integrity', () => {
         expect(lo).toBeGreaterThan(0)
         expect(hi).toBeGreaterThan(lo)
         if (track.type === 'weighted') {
-          expect(['one', 'pair']).toContain(level.load)
+          expect(['one', 'pair', 'bar', 'stack']).toContain(level.load)
+          if (track.location === 'gym') expect(Object.keys(GYM_GEAR)).toContain(level.gear)
+          else expect(level.gear).toBeUndefined()
           if (i === 0) expect(level.startWeight).toBeGreaterThan(0)
           if (i > 0) expect(level.entryFactor).toBeGreaterThan(0)
         }

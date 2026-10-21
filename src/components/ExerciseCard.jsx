@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { TRACKS, isPerSide } from '../data/tracks.js'
+import { TRACKS, isPerSide, levelDemoId } from '../data/tracks.js'
 import { findSwap, swapDemoId, swapsFor } from '../data/swaps.js'
-import { availableWeights, formatKg } from '../logic/weights.js'
+import { formatKg } from '../logic/weights.js'
+import { weightsForLevel } from '../logic/progression.js'
 import { lastPerformance } from '../logic/history.js'
 import { loadLabel, setsText, targetText } from '../lib/describe.js'
 import { formatDate } from '../lib/format.js'
@@ -37,10 +38,10 @@ export default function ExerciseCard({
   const swap = exercise.swapId ? findSwap(exercise.trackId, exercise.swapId) : null
   const swaps = swapsFor(exercise.trackId)
   const name = swap ? swap.name : level.name
-  const demoId = swap ? swapDemoId(swap) : level.id
+  const demoId = swap ? swapDemoId(swap) : levelDemoId(level)
   const cues = swap ? swap.cues : level.cues
   const perSide = swap?.perSide || isPerSide(track, exercise.levelIndex)
-  const weights = availableWeights(equipment, { allowBodyweight: level.allowBodyweight })
+  const weights = weightsForLevel(level, equipment)
   const last = swap ? null : lastPerformance(workouts, exercise.trackId)
   const doneCount = exercise.sets.filter((s) => s.done).length
   const anyDone = doneCount > 0

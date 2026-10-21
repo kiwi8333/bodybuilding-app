@@ -85,6 +85,24 @@ export const TEMPO = {
   'heel-taps': { pattern: 'alternate', lower: 2, top: 0, lift: 2, bottom: 0 },
   'incline-plank': { pattern: 'hold' },
 
+  // Gym levels without an animation (gym levels with a `demo` use its tempo)
+  'barbell-back-squat': lowerFirst(2, 0, 1),
+  'pause-back-squat': lowerFirst(2, 2, 1),
+  'barbell-bench-press': lowerFirst(2, 0, 1),
+  'pause-bench-press': lowerFirst(2, 1, 1),
+  'lat-pulldown': liftFirst(1, 0, 2),
+  'barbell-romanian-deadlift': lowerFirst(2, 0, 1),
+  'cable-triceps-pushdown': liftFirst(1, 0, 2),
+  'captains-chair-knee-raise': liftFirst(1, 0, 2),
+  'hanging-knee-raise': liftFirst(1, 0, 2),
+  'hanging-leg-raise': liftFirst(1, 0, 2),
+  'leg-press': lowerFirst(2, 0, 1),
+  'incline-db-press': lowerFirst(2, 0, 1),
+  'seated-cable-row': liftFirst(1, 1, 2),
+  'machine-leg-curl': liftFirst(1, 0, 2),
+  'seated-db-shoulder-press': liftFirst(1, 0, 2),
+  'kneeling-cable-crunch': liftFirst(1, 1, 2),
+
   // Rest-day mobility
   'mob-arm-reach': liftFirst(2, 0, 2),
   'mob-deep-squat': { pattern: 'hold' },

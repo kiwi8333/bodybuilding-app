@@ -36,6 +36,8 @@ export function createInitialState() {
     deload: initialDeload(),
     mobilityLogs: [],
     lastBackupAt: null,
+    // Where you train: picks Workout A/B (home) or Gym A/B.
+    trainAt: 'home',
     ui: { dumbbellAlertDismissedCount: 0 },
   }
 }
@@ -511,6 +513,7 @@ export function updateHeart(state, { maxHr, restingHr }) {
 // ---------- Reminders, mobility, backup, UI ----------
 
 const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/
+const TRAIN_AT = ['home', 'gym']
 
 export function validateReminders(r) {
   if (!isObj(r)) throw new Error('Invalid reminder settings.')
@@ -541,6 +544,11 @@ export function logMobility(state, now = new Date()) {
 
 export function markBackedUp(state, now = new Date()) {
   return { ...state, lastBackupAt: now.toISOString() }
+}
+
+export function setTrainAt(state, location) {
+  if (!TRAIN_AT.includes(location)) throw new Error('Choose home or gym.')
+  return { ...state, trainAt: location }
 }
 
 export function dismissDumbbellAlert(state, count) {
@@ -775,6 +783,8 @@ function checkV2Sections(raw, workoutCount) {
   if (!Array.isArray(raw.mobilityLogs) || !raw.mobilityLogs.every(isIso)) fail('mobilityLogs', 'invalid')
   if (raw.lastBackupAt !== null && !isIso(raw.lastBackupAt)) fail('lastBackupAt', 'invalid')
   if (!isObj(raw.ui) || !Number.isInteger(raw.ui.dumbbellAlertDismissedCount) || raw.ui.dumbbellAlertDismissedCount < 0) fail('ui', 'invalid')
+  // Added after version 2 shipped, so older version 2 data may not have it.
+  if (raw.trainAt !== undefined && !TRAIN_AT.includes(raw.trainAt)) fail('trainAt', 'invalid')
 
   return {
     nutrition: { activity: n.activity, goal: n.goal, calorieAdjust: n.calorieAdjust, lastAdjustDate: n.lastAdjustDate, log, customFoods },
@@ -783,6 +793,7 @@ function checkV2Sections(raw, workoutCount) {
     deload,
     mobilityLogs: [...raw.mobilityLogs],
     lastBackupAt: raw.lastBackupAt,
+    trainAt: raw.trainAt ?? 'home',
     ui: { dumbbellAlertDismissedCount: raw.ui.dumbbellAlertDismissedCount },
   }
 }

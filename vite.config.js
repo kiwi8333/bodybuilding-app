@@ -9,6 +9,9 @@ import { VitePWA } from 'vite-plugin-pwa'
 function cspPlugin() {
   return {
     name: 'forge-csp',
+    // Production builds only: the dev server injects inline scripts (React
+    // Fast Refresh) that this policy would block, so `npm run dev` stays usable.
+    apply: 'build',
     transformIndexHtml(html) {
       const api = (process.env.VITE_PUSH_API_URL || '').replace(/\/+$/, '')
       // Open Food Facts: food search and barcode lookup on the Food tab.

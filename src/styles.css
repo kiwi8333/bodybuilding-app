@@ -422,7 +422,7 @@ ul.cues {
   margin: 0 auto;
   height: var(--nav-h);
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(6, 1fr);
 }
 
 .nav a {
@@ -2117,4 +2117,387 @@ h2 {
 
 .purpose-adds strong {
   color: var(--text);
+}
+
+/* ---------- Fasting ---------- */
+.nav a {
+  font-size: 0.68rem;
+}
+
+.fast-hero {
+  align-items: stretch;
+  gap: 16px;
+}
+
+.fast-hero.running {
+  background: radial-gradient(120% 70% at 50% 0%, var(--accent-soft), var(--surface) 70%);
+}
+
+.fast-ring-wrap {
+  display: flex;
+  justify-content: center;
+  padding: 6px 0 2px;
+}
+
+.fast-ring-wrap .ring-center {
+  gap: 4px;
+  text-align: center;
+  padding: 0 24px;
+}
+
+.fast-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.fast-clock {
+  font-family: var(--font-display);
+  font-size: 2.9rem;
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.fast-sub {
+  font-size: 0.8rem;
+  color: var(--text-2);
+}
+
+.fast-times {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.fast-times > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--surface-2);
+}
+
+.fast-times strong {
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+}
+
+.plan-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.plan-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 10px 4px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text-2);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    transform 0.14s var(--ease-out),
+    background-color 0.2s,
+    border-color 0.2s,
+    color 0.2s;
+}
+
+.plan-chip:active {
+  transform: scale(0.96);
+}
+
+.plan-chip strong {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  color: var(--text);
+}
+
+.plan-chip span {
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.plan-chip.on {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.stage-strip {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.stage-seg {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.stage-bar {
+  display: block;
+  height: 8px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--text) 10%, transparent);
+  overflow: hidden;
+}
+
+.stage-bar span {
+  display: block;
+  height: 100%;
+  border-radius: 4px;
+  background: var(--accent);
+  transition: width 0.6s var(--ease-out);
+}
+
+.stage-seg.past .stage-bar span {
+  background: color-mix(in srgb, var(--accent) 60%, transparent);
+}
+
+.stage-hour {
+  font-size: 0.68rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.stage-seg.now .stage-hour {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.week-chart {
+  margin: 0;
+}
+
+.week-chart svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.week-bar {
+  fill: color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
+.week-bar.good {
+  fill: var(--accent);
+}
+
+.week-bar.empty {
+  fill: color-mix(in srgb, var(--text) 10%, transparent);
+}
+
+.week-goal {
+  stroke: var(--good);
+  stroke-width: 1.2;
+  stroke-dasharray: 4 4;
+}
+
+.week-goal-label {
+  fill: var(--good);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.week-day {
+  fill: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.gear-row {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px 12px 12px;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.gear-row legend {
+  padding: 0 6px;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.gym-start-list li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 86px;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.gym-start-list li:last-child {
+  border-bottom: none;
+}
+
+.gym-start-list .input {
+  text-align: center;
+}
+
+/* ---------- Food: meals, macros, goal ---------- */
+.macro-bars {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.macro-bars .hint {
+  grid-column: 1 / -1;
+}
+
+.macro {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.meal-pick {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.meal-chip {
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text-2);
+  border-radius: 999px;
+  min-height: 36px;
+  font-weight: 650;
+  font-size: 0.82rem;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    transform 0.14s var(--ease-out),
+    background-color 0.2s,
+    border-color 0.2s,
+    color 0.2s;
+}
+
+.meal-chip:active {
+  transform: scale(0.96);
+}
+
+.meal-chip.on {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.meal-head h3 {
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.goal-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.goal-big {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+}
+
+.week-bar.over {
+  fill: var(--warn);
+}
+
+/* ---------- Workout finish ---------- */
+.confetti {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 50;
+}
+
+.confetti i {
+  position: absolute;
+  top: -20px;
+  border-radius: 2px;
+  opacity: 0;
+  animation: confetti-fall 2.2s cubic-bezier(0.25, 0.6, 0.45, 1) forwards;
+}
+
+@keyframes confetti-fall {
+  0% {
+    opacity: 1;
+    transform: translate(0, 0) rotate(0deg);
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--drift), 105vh) rotate(var(--spin));
+  }
+}
+
+.card.celebrate {
+  align-items: center;
+  text-align: center;
+  border-color: color-mix(in srgb, var(--good) 45%, transparent);
+  background: radial-gradient(120% 80% at 50% 0%, var(--good-soft), var(--surface) 70%);
+}
+
+.celebrate-badge {
+  font-size: 2.4rem;
+  line-height: 1;
+  animation: bump 0.6s var(--ease-spring) 0.2s backwards;
+}
+
+.pb-list {
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pb-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: var(--surface-2);
+  text-align: left;
+  font-size: 0.9rem;
+}
+
+.pb-change {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .confetti {
+    display: none;
+  }
+}
+
+.seg-row .text-2 {
+  white-space: nowrap;
+}
+
+.gear-row .grid-2 {
+  align-items: end;
 }

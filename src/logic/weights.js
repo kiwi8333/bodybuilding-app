@@ -7,9 +7,11 @@ const toCenti = (kg) => Math.round(kg * 100)
 const fromCenti = (c) => c / 100
 
 // The weight steps a level is loaded with: gym levels use their gear (barbell,
-// gym dumbbells, machine or cable stack); home levels use your dumbbell set.
-export function equipmentFor(level, homeEquipment) {
-  return (level?.gear && GYM_GEAR[level.gear]) || homeEquipment
+// gym dumbbells, machine or cable stack) as set in Settings → My gym, or the
+// usual defaults; home levels use your dumbbell set.
+export function equipmentFor(level, equipment) {
+  if (!level?.gear) return equipment
+  return equipment?.gym?.[level.gear] ?? GYM_GEAR[level.gear]
 }
 
 // Every weight you can load on one dumbbell, ascending.

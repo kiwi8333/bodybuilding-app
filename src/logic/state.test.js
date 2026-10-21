@@ -19,6 +19,8 @@ import {
   parseBackup,
   serializeBackup,
   setTrainAt,
+  updateGymGear,
+  updateWeightGoal,
   setWeightFrom,
   startWorkout,
   updateEquipment,
@@ -115,7 +117,7 @@ describe('equipment', () => {
     expect(() => validateEquipment({ minWeight: 2.5, increment: 2.5, maxWeight: 14 })).toThrow(/whole number/)
     expect(() => validateEquipment({ minWeight: 5, increment: 2.5, maxWeight: 2.5 })).toThrow()
     expect(() => validateEquipment({ minWeight: 0, increment: 2.5, maxWeight: 15 })).toThrow()
-    expect(validateEquipment({ minWeight: '2', increment: '1', maxWeight: '12' })).toEqual({ minWeight: 2, increment: 1, maxWeight: 12 })
+    expect(validateEquipment({ minWeight: '2', increment: '1', maxWeight: '12' })).toMatchObject({ minWeight: 2, increment: 1, maxWeight: 12 })
   })
 
   it('re-snaps stored weights when equipment changes', () => {
@@ -305,5 +307,63 @@ describe('undoable deletes', () => {
     expect(restoreFoodEntry(back, '2026-10-21', day[1], 1)).toBe(back) // already there
     const lastGone = deleteFoodEntry(onboarded(), '2026-10-22', 'x')
     expect(restoreFoodEntry(lastGone, '2026-10-22', day[0], 3).nutrition.log['2026-10-22']).toEqual([day[0]])
+  })
+})
+
+describe('gym equipment settings', () => {
+  it('snaps gym weights to the gym’s own steps and keeps them through a reload', () => {
+    let s = onboarded()
+    s = updateGymGear(s, { ...s.equipment.gym, barbell: { minWeight: 20, increment: 5, maxWeight: 200 }, dumbbell: { minWeight: 2, increment: 2, maxWeight: 40 } })
+    const target = (id) => startWorkout(setTrainAt(s, 'gym'), 'GA').activeWorkout.exercises.find((e) => e.trackId === id).target.weight
+    expect(target('gymSquat')).toBe(40)
+    expect(target('gymLateral')).toBe(4) // 5 kg default snaps down to the 2 kg steps
+    let done = finishWorkout(logAll(startWorkout(setTrainAt(s, 'gym'), 'GA'), 99))
+    expect(done.tracks.gymSquat.weight).toBe(45) // one 5 kg jump
+    expect(normalizeState(JSON.parse(JSON.stringify(s))).equipment.gym.barbell.increment).toBe(5)
+    expect(() => updateGymGear(s, { ...s.equipment.gym, machine: { minWeight: 5, increment: 3, maxWeight: 100 } })).toThrow(/Machines/)
+  })
+
+  it('changing home dumbbells leaves the gym steps alone', () => {
+    let s = updateGymGear(onboarded(), { ...onboarded().equipment.gym, cable: { minWeight: 5, increment: 5, maxWeight: 90 } })
+    s = updateEquipment(s, { minWeight: 2, increment: 2, maxWeight: 20, gym: s.equipment.gym })
+    expect(s.equipment.gym.cable.increment).toBe(5)
+  })
+})
+
+describe('onboarding for the gym', () => {
+  it('sets where you train and uses entered gym weights, falling back for blanks', () => {
+    const s = completeOnboarding(createInitialState(), {
+      name: 'G',
+      equipment: { minWeight: 2.5, increment: 2.5, maxWeight: 15 },
+      walkSpeed: 3,
+      jogSpeed: 4.5,
+      trainAt: 'gym',
+      startWeights: { gymSquat: '61', gymBench: '', gymLegPress: 'abc' },
+    })
+    expect(s.trainAt).toBe('gym')
+    expect(s.tracks.gymSquat.weight).toBe(60) // snapped down to the 2.5 kg bar steps
+    expect(s.tracks.gymBench.weight).toBe(30) // blank: the suggestion
+    expect(s.tracks.gymLegPress.weight).toBe(40)
+    expect(completeOnboarding(createInitialState(), { name: '', equipment: { minWeight: 2.5, increment: 2.5, maxWeight: 15 }, trainAt: 'moon' }).trainAt).toBe('home')
+  })
+})
+
+describe('weight goal and meals', () => {
+  it('saves a goal weight and pace, rejecting nonsense', () => {
+    let s = updateWeightGoal(onboarded(), { goalWeight: '74.95', weeklyRate: '0.5' })
+    expect(s.nutrition).toMatchObject({ goalWeight: 75, weeklyRate: 0.5 })
+    expect(updateWeightGoal(s, { goalWeight: '', weeklyRate: '' }).nutrition).toMatchObject({ goalWeight: null, weeklyRate: null })
+    expect(() => updateWeightGoal(s, { goalWeight: 10, weeklyRate: null })).toThrow(/Goal weight/)
+    expect(() => updateWeightGoal(s, { goalWeight: 70, weeklyRate: 2 })).toThrow(/pace/)
+    expect(normalizeState(JSON.parse(JSON.stringify(s))).nutrition.goalWeight).toBe(75)
+  })
+
+  it('logs carbs, fat and the meal, scaled by servings', () => {
+    let s = addFoodEntry(onboarded(), '2026-10-21', { name: 'Oats', kcal: 150, protein: 5, carbs: 27, fat: 3, servings: 2, meal: 'breakfast' })
+    expect(s.nutrition.log['2026-10-21'][0]).toMatchObject({ kcal: 300, carbs: 54, fat: 6, meal: 'breakfast' })
+    s = addFoodEntry(s, '2026-10-21', { name: 'Mystery', kcal: 100, protein: 1 })
+    expect(s.nutrition.log['2026-10-21'][1]).toMatchObject({ carbs: null, fat: null, meal: null })
+    expect(() => addFoodEntry(s, '2026-10-21', { name: 'X', kcal: 1, protein: 1, meal: 'brunch' })).toThrow(/meal/)
+    expect(normalizeState(JSON.parse(JSON.stringify(s))).nutrition.log).toEqual(s.nutrition.log)
   })
 })

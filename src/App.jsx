@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect } from 'react'
 import { Navigate, NavLink, Route, Routes, useLocation } from 'react-router-dom'
 import { useStore } from './store/StoreContext.jsx'
-import { FoodIcon, PlanIcon, ProgressIcon, SettingsIcon, TodayIcon } from './components/icons.jsx'
+import { FastIcon, FoodIcon, PlanIcon, ProgressIcon, SettingsIcon, TodayIcon } from './components/icons.jsx'
 import Onboarding from './pages/Onboarding.jsx'
 import Today from './pages/Today.jsx'
 import { SkeletonRows } from './components/EmptyState.jsx'
@@ -17,6 +17,7 @@ const Progress = lazy(() => import('./pages/Progress.jsx'))
 const Settings = lazy(() => import('./pages/Settings.jsx'))
 const Food = lazy(() => import('./pages/Food.jsx'))
 const Mobility = lazy(() => import('./pages/Mobility.jsx'))
+const Fasting = lazy(() => import('./pages/Fasting.jsx'))
 
 const pageFallback = (
   <section className="card">
@@ -29,6 +30,7 @@ const NAV = [
   { to: '/', label: 'Today', Icon: TodayIcon, end: true },
   { to: '/plan', label: 'Plan', Icon: PlanIcon },
   { to: '/food', label: 'Food', Icon: FoodIcon },
+  { to: '/fast', label: 'Fast', Icon: FastIcon },
   { to: '/progress', label: 'Progress', Icon: ProgressIcon },
   { to: '/settings', label: 'Settings', Icon: SettingsIcon },
 ]
@@ -102,6 +104,7 @@ export default function App() {
               <Route path="/plan" element={<Plan />} />
               <Route path="/progress" element={<Progress />} />
               <Route path="/food" element={<Food />} />
+              <Route path="/fast" element={<Fasting />} />
               <Route path="/mobility" element={<Mobility />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="*" element={<Navigate to="/" replace />} />

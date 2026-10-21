@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { bestSet, exerciseSeries, lastPerformance, levelsWithData, personalBests, startOfWeek, weeklyStreak, workoutMinutes, workoutsThisWeek } from './history.js'
+import { bestSet, exerciseSeries, lastPerformance, levelsWithData, newBests, personalBests, startOfWeek, weeklyStreak, workoutMinutes, workoutsThisWeek } from './history.js'
 
 const at = (y, m, d, h = 10, min = 0) => new Date(y, m - 1, d, h, min).toISOString()
 
@@ -59,5 +59,27 @@ describe('history', () => {
 
   it('workout duration in minutes', () => {
     expect(workoutMinutes(workouts[2])).toBe(50)
+  })
+})
+
+describe('personal bests in a workout', () => {
+  const ex = (weight, reps, extra = {}) => ({ trackId: 'squat', levelIndex: 0, levelName: 'Goblet Squat', type: 'weighted', sets: reps.map((value) => ({ value, weight })), ...extra })
+  const w = (id, day, exercises) => ({ id, workoutId: 'A', startedAt: `2026-10-${day}T09:00:00Z`, finishedAt: `2026-10-${day}T10:00:00Z`, exercises })
+
+  it('finds heavier weight or more reps at the same weight, but not a first session', () => {
+    const first = w('a', '10', [ex(10, [12, 12, 11])])
+    const heavier = w('b', '12', [ex(12.5, [8, 8, 8])])
+    const moreReps = w('c', '14', [ex(12.5, [10, 9, 8])])
+    const same = w('d', '16', [ex(12.5, [10, 9, 9])])
+    const all = [first, heavier, moreReps, same]
+    expect(newBests(all, first)).toEqual([])
+    expect(newBests(all, heavier).map((b) => b.best.weight)).toEqual([12.5])
+    expect(newBests(all, moreReps)[0]).toMatchObject({ best: { weight: 12.5, value: 10 }, prev: { weight: 12.5, value: 8 } })
+    expect(newBests(all, same)).toEqual([])
+  })
+
+  it('ignores swapped exercises', () => {
+    const all = [w('a', '10', [ex(10, [10])]), w('b', '12', [ex(15, [10], { swapId: 'goblet-box-squat' })])]
+    expect(newBests(all, all[1])).toEqual([])
   })
 })

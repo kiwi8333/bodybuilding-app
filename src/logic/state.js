@@ -6,10 +6,12 @@ import { WORKOUTS } from '../data/program.js'
 import { BUILDER_STAGES, FITNESS_ROTATION, REST_DAY_WALK, currentCardioStage } from '../data/cardio.js'
 import { evaluate, initialTrackState, prescribe } from './progression.js'
 import { evaluateCardio, initialCardioState } from './cardioProgression.js'
-import { ACTIVITY_LEVELS, GOALS, initialNutrition, validateFood } from './nutrition.js'
+import { ACTIVITY_LEVELS, GOALS, LOSS_RATES, MEALS, initialNutrition, validateFood } from './nutrition.js'
 import { validateHr } from './heart.js'
 import { afterWorkout, cancelDeload, deloadTarget, initialDeload, snoozeDeload, startDeload } from './deload.js'
 import { findSwap } from '../data/swaps.js'
+import { GYM_GEAR } from '../data/gymTracks.js'
+import { cancelFast, choosePlan, deleteFastLog, editFastStart, endFast, initialFasting, normalizeFasting, restoreFastLog, startFast } from './fasting.js'
 
 export const SCHEMA_VERSION = 2
 
@@ -18,7 +20,7 @@ export const DEFAULT_EQUIPMENT = { minWeight: 2.5, increment: 2.5, maxWeight: 15
 export const DEFAULT_REMINDERS = { enabled: false, days: [1, 3, 5], time: '18:00', nudgeMissed: true, nudgeBackup: true }
 
 export function createInitialState() {
-  const equipment = { ...DEFAULT_EQUIPMENT }
+  const equipment = validateEquipment(DEFAULT_EQUIPMENT)
   return {
     version: SCHEMA_VERSION,
     profile: { onboarded: false, name: '', sex: null, birthYear: null, heightCm: null },
@@ -38,6 +40,7 @@ export function createInitialState() {
     lastBackupAt: null,
     // Where you train: picks Workout A/B (home) or Gym A/B.
     trainAt: 'home',
+    fasting: initialFasting(),
     ui: { dumbbellAlertDismissedCount: 0 },
   }
 }
@@ -58,7 +61,7 @@ export function dateKey(date = new Date()) {
 
 // ---------- Onboarding & settings ----------
 
-export function completeOnboarding(state, { name, equipment, jogSpeed, walkSpeed, startLevels, startWeights }) {
+export function completeOnboarding(state, { name, equipment, jogSpeed, walkSpeed, startLevels, startWeights, trainAt }) {
   const eq = validateEquipment(equipment)
   const tracks = {}
   for (const track of Object.values(TRACKS)) {
@@ -66,8 +69,10 @@ export function completeOnboarding(state, { name, equipment, jogSpeed, walkSpeed
     const levelIndex = startLevels?.[track.id] ?? base.levelIndex
     tracks[track.id] = { ...base, levelIndex }
     if (track.type === 'weighted') {
-      const w = startWeights?.[track.id]
-      tracks[track.id].weight = prescribe(track, { ...base, levelIndex, weight: w ?? base.weight }, eq).weight
+      // Blank or nonsense entries fall back to the suggested starting weight.
+      const w = Number(startWeights?.[track.id])
+      const chosen = startWeights?.[track.id] !== '' && Number.isFinite(w) && w > 0 ? w : base.weight
+      tracks[track.id].weight = prescribe(track, { ...base, levelIndex, weight: chosen }, eq).weight
     }
   }
   const withSpeeds = updateCardioSpeeds(state, {
@@ -79,26 +84,42 @@ export function completeOnboarding(state, { name, equipment, jogSpeed, walkSpeed
     profile: { ...state.profile, onboarded: true, name: String(name ?? '').trim().slice(0, 40) },
     equipment: eq,
     tracks,
+    trainAt: TRAIN_AT.includes(trainAt) ? trainAt : state.trainAt,
   }
 }
 
-export function validateEquipment(equipment) {
-  const minWeight = Number(equipment?.minWeight)
-  const increment = Number(equipment?.increment)
-  const maxWeight = Number(equipment?.maxWeight)
-  if (!Number.isFinite(minWeight) || minWeight < 0.5 || minWeight > 100) {
-    throw new Error('Lightest weight must be between 0.5 and 100 kg.')
+// One set of weight steps: lightest, jump, heaviest. `name` prefixes errors.
+function validateSteps(steps, { name = '', max = 100 } = {}) {
+  const minWeight = Number(steps?.minWeight)
+  const increment = Number(steps?.increment)
+  const maxWeight = Number(steps?.maxWeight)
+  const label = (s) => (name ? `${name}: ${s.charAt(0).toLowerCase()}${s.slice(1)}` : s)
+  if (!Number.isFinite(minWeight) || minWeight < 0.5 || minWeight > max) {
+    throw new Error(label(`Lightest weight must be between 0.5 and ${max} kg.`))
   }
-  if (!Number.isFinite(increment) || increment < 0.25 || increment > 20) {
-    throw new Error('Weight jump must be between 0.25 and 20 kg.')
+  if (!Number.isFinite(increment) || increment < 0.25 || increment > 25) {
+    throw new Error(label('Weight jump must be between 0.25 and 25 kg.'))
   }
-  if (!Number.isFinite(maxWeight) || maxWeight < minWeight || maxWeight > 100) {
-    throw new Error('Heaviest weight must be at least the lightest weight and at most 100 kg.')
+  if (!Number.isFinite(maxWeight) || maxWeight < minWeight || maxWeight > max) {
+    throw new Error(label(`Heaviest weight must be at least the lightest weight and at most ${max} kg.`))
   }
   if (Math.round((maxWeight - minWeight) * 100) % Math.round(increment * 100) !== 0) {
-    throw new Error('Heaviest minus lightest must be a whole number of weight jumps (e.g. 2.5 → 15 in 2.5 kg jumps).')
+    throw new Error(label('Heaviest minus lightest must be a whole number of weight jumps (e.g. 2.5 → 15 in 2.5 kg jumps).'))
   }
   return { minWeight, increment, maxWeight }
+}
+
+export const GYM_GEAR_LABELS = { barbell: 'Barbell', dumbbell: 'Gym dumbbells', machine: 'Machines', cable: 'Cables' }
+
+// Home dumbbells, plus the gym's weight steps per kind of equipment (missing
+// gear falls back to the usual gym defaults).
+export function validateEquipment(equipment) {
+  const home = validateSteps(equipment)
+  const gym = {}
+  for (const gear of Object.keys(GYM_GEAR)) {
+    gym[gear] = validateSteps(equipment?.gym?.[gear] ?? GYM_GEAR[gear], { name: GYM_GEAR_LABELS[gear], max: 500 })
+  }
+  return { ...home, gym }
 }
 
 export function updateEquipment(state, equipment) {
@@ -111,6 +132,10 @@ export function updateEquipment(state, equipment) {
     tracks[track.id] = { ...s, weight: prescribe(track, { ...s, lastPerformedAt: null }, eq).weight }
   }
   return { ...state, equipment: eq, tracks }
+}
+
+export function updateGymGear(state, gym) {
+  return updateEquipment(state, { ...state.equipment, gym })
 }
 
 export function updateCardioSpeeds(state, { walkSpeed, jogSpeed }) {
@@ -478,6 +503,20 @@ export function updateNutritionSettings(state, { activity, goal }) {
   return { ...state, nutrition: { ...state.nutrition, activity, goal, calorieAdjust: goalChanged ? 0 : state.nutrition.calorieAdjust } }
 }
 
+// Goal weight (kg, or blank for none) and weight-loss pace (kg a week, or null
+// for the standard deficit).
+export function updateWeightGoal(state, { goalWeight, weeklyRate }) {
+  let goal = null
+  if (goalWeight !== '' && goalWeight != null) {
+    goal = Number(goalWeight)
+    if (!Number.isFinite(goal) || goal < 30 || goal > 300) throw new Error('Goal weight must be between 30 and 300 kg.')
+    goal = Math.round(goal * 10) / 10
+  }
+  const rate = weeklyRate === '' || weeklyRate == null ? null : Number(weeklyRate)
+  if (rate !== null && !LOSS_RATES.some((r) => r.kg === rate)) throw new Error('Pick a weight-loss pace.')
+  return { ...state, nutrition: { ...state.nutrition, goalWeight: goal, weeklyRate: rate } }
+}
+
 export function applyCalorieAdjust(state, delta, now = new Date()) {
   const d = Number(delta)
   if (![-150, 150].includes(d)) throw new Error('Invalid adjustment.')
@@ -490,11 +529,16 @@ export function addFoodEntry(state, date, food, now = new Date()) {
   const clean = validateFood(food)
   const servings = food.servings === undefined ? 1 : Number(food.servings)
   if (!Number.isFinite(servings) || servings < 0.25 || servings > 20) throw new Error('Servings must be between 0.25 and 20.')
+  if (food.meal != null && !MEALS.some((m) => m.id === food.meal)) throw new Error('Pick a meal.')
+  const scale = (g) => (g === null ? null : Math.round(g * servings * 10) / 10)
   const entry = {
     id: makeId(now),
     name: servings === 1 ? clean.name : `${clean.name} × ${servings}`,
     kcal: Math.round(clean.kcal * servings),
     protein: Math.round(clean.protein * servings * 10) / 10,
+    carbs: scale(clean.carbs),
+    fat: scale(clean.fat),
+    meal: food.meal ?? null,
   }
   const day = state.nutrition.log[date] ?? []
   if (day.length >= 60) throw new Error('That day already has 60 entries.')
@@ -577,6 +621,36 @@ export function markBackedUp(state, now = new Date()) {
 export function setTrainAt(state, location) {
   if (!TRAIN_AT.includes(location)) throw new Error('Choose home or gym.')
   return { ...state, trainAt: location }
+}
+
+// ---------- Fasting ----------
+
+export function setFastPlan(state, planId, customHours) {
+  return { ...state, fasting: choosePlan(state.fasting, planId, customHours) }
+}
+
+export function beginFast(state, now = new Date(), startedAt) {
+  return { ...state, fasting: startFast(state.fasting, now, startedAt ?? now.toISOString()) }
+}
+
+export function changeFastStart(state, startedAt, now = new Date()) {
+  return { ...state, fasting: editFastStart(state.fasting, startedAt, now) }
+}
+
+export function finishFast(state, now = new Date()) {
+  return { ...state, fasting: endFast(state.fasting, now).fasting }
+}
+
+export function abandonFast(state) {
+  return { ...state, fasting: cancelFast(state.fasting) }
+}
+
+export function removeFastLog(state, id) {
+  return { ...state, fasting: deleteFastLog(state.fasting, id) }
+}
+
+export function putBackFastLog(state, log) {
+  return { ...state, fasting: restoreFastLog(state.fasting, log) }
 }
 
 export function dismissDumbbellAlert(state, count) {
@@ -764,7 +838,11 @@ function checkV2Sections(raw, workoutCount) {
       if (!isObj(e) || !isStr(e.id) || !isStr(e.name)) fail(p, 'invalid entry')
       if (!isNum(e.kcal) || e.kcal < 0 || e.kcal > 100000) fail(`${p}.kcal`, 'invalid')
       if (!isNum(e.protein) || e.protein < 0 || e.protein > 6000) fail(`${p}.protein`, 'invalid')
-      return { id: e.id, name: e.name.slice(0, 80), kcal: e.kcal, protein: e.protein }
+      for (const k of ['carbs', 'fat']) {
+        if (e[k] != null && (!isNum(e[k]) || e[k] < 0 || e[k] > 10000)) fail(`${p}.${k}`, 'invalid')
+      }
+      if (e.meal != null && !MEALS.some((m) => m.id === e.meal)) fail(`${p}.meal`, 'invalid')
+      return { id: e.id, name: e.name.slice(0, 80), kcal: e.kcal, protein: e.protein, carbs: e.carbs ?? null, fat: e.fat ?? null, meal: e.meal ?? null }
     })
   }
   if (!Array.isArray(n.customFoods)) fail('nutrition.customFoods', 'invalid')
@@ -815,15 +893,33 @@ function checkV2Sections(raw, workoutCount) {
   if (raw.trainAt !== undefined && !TRAIN_AT.includes(raw.trainAt)) fail('trainAt', 'invalid')
 
   return {
-    nutrition: { activity: n.activity, goal: n.goal, calorieAdjust: n.calorieAdjust, lastAdjustDate: n.lastAdjustDate, log, customFoods },
+    nutrition: {
+      activity: n.activity,
+      goal: n.goal,
+      calorieAdjust: n.calorieAdjust,
+      lastAdjustDate: n.lastAdjustDate,
+      log,
+      customFoods,
+      ...checkWeightGoal(n),
+    },
     heart,
     reminders,
     deload,
     mobilityLogs: [...raw.mobilityLogs],
     lastBackupAt: raw.lastBackupAt,
     trainAt: raw.trainAt ?? 'home',
+    fasting: normalizeFasting(raw.fasting, fail),
     ui: { dumbbellAlertDismissedCount: raw.ui.dumbbellAlertDismissedCount },
   }
+}
+
+// Goal weight and pace were added after version 2 shipped; older saves lack them.
+function checkWeightGoal(n) {
+  const goalWeight = n.goalWeight ?? null
+  if (goalWeight !== null && (!isNum(goalWeight) || goalWeight < 30 || goalWeight > 300)) fail('nutrition.goalWeight', 'invalid')
+  const weeklyRate = n.weeklyRate ?? null
+  if (weeklyRate !== null && !LOSS_RATES.some((r) => r.kg === weeklyRate)) fail('nutrition.weeklyRate', 'invalid')
+  return { goalWeight, weeklyRate }
 }
 
 function checkSet(s, p, { requireDone }) {

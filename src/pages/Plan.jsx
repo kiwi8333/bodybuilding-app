@@ -478,8 +478,12 @@ function RulesTab() {
             then the app adds one weight jump.
           </li>
           <li>
-            When you beat the range with your heaviest dumbbell, you move up to a harder version (slower tempo, pauses, 1½ reps, single-leg).
+            At home, when you beat the range with your heaviest dumbbell, you move up to a harder version (slower tempo, pauses, 1½ reps, single-leg).
             That keeps muscles growing with limited equipment.
+          </li>
+          <li>
+            In the gym, weights go up in the steps your gym actually has (barbell plates, dumbbells, machine and cable stacks). Set them in Settings → My gym.
+            Home and gym each keep their own A/B rotation and their own progress.
           </li>
           <li>Falling below the bottom of the range two sessions in a row drops the weight ~10% (or the level) to rebuild.</li>
           <li>After two or more weeks off, your first session back starts ~10% lighter.</li>
@@ -498,8 +502,15 @@ function RulesTab() {
         <ul className="cues spaced">
           <li>Protein: about 1.6–2.2 g per kg of bodyweight daily (a palm-sized portion at each meal plus a snack).</li>
           <li>
-            To gain muscle, eat a small surplus: bodyweight rising about 0.5–1% a month (0.4–0.8 kg if you weigh 80 kg) is ideal for a beginner. The Food tab sets
-            your targets and adjusts them from your weigh-ins.
+            To gain muscle, eat a small surplus: bodyweight rising about 0.5–1% a month (0.4–0.8 kg if you weigh 80 kg) is ideal for a beginner.
+          </li>
+          <li>
+            To lose fat, eat in a deficit and keep training hard so the weight lost is fat, not muscle. About 0.5–1% of your bodyweight a week works well. On the
+            Food tab, set your goal weight and pace; it works out your calories, protein, carbs and fat, and adjusts them from your weigh-ins.
+          </li>
+          <li>
+            Fasting (Fast tab) can make a deficit easier by shortening the hours you eat. It is optional: total calories and protein matter most. Train in or near your
+            eating window when you can.
           </li>
           <li>Sleep 7–9 hours. Drink water through the day, more on training days.</li>
         </ul>

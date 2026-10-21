@@ -1,8 +1,9 @@
 # Forge: Muscle & Fitness
 
-An installable phone app (PWA) for building muscle and aerobic fitness with
-**adjustable dumbbells (up to 15 kg), no bench, and a treadmill**, three
-~60-minute sessions a week.
+An installable phone app (PWA) for building muscle, losing fat and getting fitter: three
+~60-minute full-body sessions a week, either **at home with adjustable dumbbells and a
+treadmill** or **in a full gym** (Gym A/B with barbells, machines and cables), plus calorie
+and macro tracking with food search and barcode scanning, and an intermittent fasting timer.
 
 **Open it:** https://kiwi8333.github.io/bodybuilding-app/
 On your phone, open the link, then choose **Add to Home Screen** (iPhone: Share → Add to
@@ -21,6 +22,18 @@ Home Screen; Android/Chrome: ⋮ → Install app). It works offline in the gym.
 | Lateral Raise 2×12–20 | Dumbbell Glute Bridge 3×12–20 |
 | Dumbbell Curl 2×10–15 | Overhead Triceps Extension 2×10–15 |
 | Dead Bug 2×6–12 / side | Plank 2×20–45 s |
+
+**In the gym: Gym A / Gym B**
+
+| Gym A | Gym B |
+|---|---|
+| Barbell Back Squat 3×6–10 | Leg Press 3×10–15 |
+| Barbell Bench Press 3×6–10 | Incline Dumbbell Press 3×8–12 |
+| Lat Pulldown 3×8–12 | Seated Cable Row 3×8–12 |
+| Barbell Romanian Deadlift 3×8–12 | Leg Curl Machine 3×10–15 |
+| Dumbbell Lateral Raise 2×12–20 | Seated Dumbbell Shoulder Press 3×8–12 |
+| Cable Triceps Pushdown 2×10–15 | Dumbbell Curl 2×10–15 |
+| Captain's Chair Knee Raise 2×8–15 | Kneeling Cable Crunch 2×10–15 |
 
 **Progression (automatic)**
 
@@ -43,9 +56,13 @@ Home Screen; Android/Chrome: ⋮ → Install app). It works offline in the gym.
 
 ## Features
 
-- Animated demo for every exercise version (45 in total), timed to that exercise's real tempo, with
+- **Home or gym:** a Home/Gym switch picks Workout A/B (dumbbells) or Gym A/B (barbell, machines,
+  cables, gym dumbbells). Each keeps its own rotation and progress; gym weights snap to the
+  steps your gym has (Settings → My gym)
+- Animated demo for every exercise (home and gym), timed to that exercise's real tempo, with
   captions for each phase of the rep
-- Trainer box per exercise: sets, reps, rest, weight, tempo, effort, how it progresses, and why
+- "What it does" for every exercise and level, plus a trainer box: sets, reps, rest, weight,
+  tempo, effort, how it progresses, and why
 - Plan page with a week-at-a-glance calendar, session timeline, and expandable exercise rows
 - Today screen with the exact weights/reps for the next session and time estimate
 - Set logger with weight carry-forward, rest timer (sound + vibration), form cues, and
@@ -55,8 +72,15 @@ Home Screen; Android/Chrome: ⋮ → Install app). It works offline in the gym.
   measurements, full history
 - Backup to Google Drive, iCloud Files or email via the share menu (optionally with photos),
   weekly backup reminders, and full validated restore
-- **Food:** calorie and protein targets (Mifflin–St Jeor + goal), a quick-add list of common
-  foods, saved custom foods, and a weekly check-in that adjusts calories from your weigh-ins
+- **Food:** calorie, protein, carb and fat targets (Mifflin–St Jeor + goal), a goal weight
+  with a chosen weight-loss pace and projected finish date, meals (breakfast, lunch, dinner,
+  snacks), food search and barcode scanning (Open Food Facts), a quick-add list, saved foods,
+  a 7-day calorie chart with logging streak, and a weekly check-in that adjusts calories
+  from your weigh-ins
+- **Fasting:** ring timer with 13:11 to 23:1, custom and open plans, the body's fasting
+  stages, editable start time, streaks, a 7-day chart, history and weight logging
+- **Finish screen:** personal bests and progressions from the workout, with confetti
+- Swipe to delete (food, sets, weigh-ins, fasts) with Undo, and bottom-sheet confirmations
 - **Workout reminders:** push notifications on training days, a nudge after a missed session,
   and a Sunday backup reminder (see "Reminders setup" below)
 - **Deload weeks:** offered every 24 workouts; one set fewer and ~10% lighter for 3 sessions,
@@ -90,7 +114,8 @@ re-run the "Test and deploy" workflow.
 
 ```bash
 npm install
-npm run dev      # local dev server
+npm run dev      # local dev server (the content security policy is added only to builds)
+npm run icons    # regenerate every icon from scripts/icon-art.mjs
 npm test         # unit tests (progression, cardio, storage, validation)
 npm run lint
 npm run build
@@ -104,7 +129,8 @@ Structure:
 - `src/data/`: exercise tracks and levels, workouts, cardio stages, tempo, coaching
 - `src/demo/`: inverse-kinematics figure rig and per-exercise choreography (tests check that
   bones keep their length, nothing goes through the floor, and loops are seamless)
-- `src/logic/`: pure, unit-tested rules (progression, cardio, state, history, nutrition, heart, deload)
+- `src/logic/`: pure, unit-tested rules (progression, cardio, state, history, nutrition, fasting, heart, deload)
+- `src/food/`: Open Food Facts search and barcode lookup
 - `src/reminders/`: schedule rules, sealing (Web Crypto) and the phone-side push client
 - `api/`: Vercel functions for reminders; `scripts/send-reminders.mjs`: the scheduled sender
 - `src/store/`: localStorage persistence with validation and corrupt-data recovery

@@ -9,6 +9,9 @@ import { addDays, daysBetween } from '../reminders/schedule.js'
 import { MOBILITY_ROUTINE, mobilityTotalSeconds } from '../data/mobility.js'
 import { formatMinutes } from '../lib/format.js'
 import { useDialogs } from './Dialogs.jsx'
+import ProgressRing from './ProgressRing.jsx'
+import { useNow } from './useNow.js'
+import { formatDuration, hoursBetween, planHours, stageAt } from '../logic/fasting.js'
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 
@@ -149,6 +152,39 @@ export function FoodSummaryCard() {
       ) : (
         <p className="small text-2">Set your calorie and protein targets on the Food tab. Muscle is built from what you eat as much as how you train.</p>
       )}
+    </section>
+  )
+}
+
+// Fasting at a glance: a running fast's progress, or the plan ready to start.
+export function FastingCard() {
+  const { state } = useStore()
+  const f = state.fasting
+  const now = useNow(Boolean(f.active), 30000)
+  const elapsed = f.active ? hoursBetween(f.active.startedAt, now) : 0
+  const goal = f.active ? f.active.targetHours : planHours(f)
+  return (
+    <section className="card">
+      <div className="row between">
+        <div className="row" style={{ gap: 12 }}>
+          <ProgressRing value={f.active ? (goal ? elapsed : elapsed % 24) : 0} max={goal ?? 24} size={48} stroke={5} tone={f.active && goal && elapsed >= goal ? 'good' : 'accent'} />
+          <div className="stack" style={{ gap: 2 }}>
+            <h2>{f.active ? `Fasting · ${formatDuration(elapsed)}` : 'Fasting'}</h2>
+            <span className="small text-2">
+              {f.active
+                ? goal
+                  ? elapsed >= goal
+                    ? `${goal}h goal reached · ${stageAt(elapsed).name}`
+                    : `${formatDuration(goal - elapsed)} to your ${goal}h goal · ${stageAt(elapsed).name}`
+                  : `Open fast · ${stageAt(elapsed).name}`
+                : `${goal ? `${goal}h` : 'Open'} plan ready`}
+            </span>
+          </div>
+        </div>
+        <Link className="btn small" to="/fast">
+          {f.active ? 'View' : 'Start'}
+        </Link>
+      </div>
     </section>
   )
 }

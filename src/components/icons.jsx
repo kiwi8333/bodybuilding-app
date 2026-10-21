@@ -52,3 +52,10 @@ export const CameraIcon = () => (
     <circle cx="12" cy="13" r="3.5" />
   </svg>
 )
+
+export const FastIcon = () => (
+  <svg {...base}>
+    <circle cx="12" cy="13" r="8" />
+    <path d="M12 9v4l2.5 2.5M10 2h4M12 2v3" />
+  </svg>
+)

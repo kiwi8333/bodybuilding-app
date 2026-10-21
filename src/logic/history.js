@@ -81,6 +81,35 @@ export function exerciseSeries(workouts, trackId, levelIndex) {
   return points
 }
 
+function beats(type, a, b) {
+  if (type === 'weighted') return a.weight > b.weight || (a.weight === b.weight && a.value > b.value)
+  return a.value > b.value
+}
+
+/**
+ * Personal bests set in one workout: exercises whose best set beats every
+ * earlier session of the same exercise and level. A first ever session is
+ * not counted (there is nothing to beat yet).
+ */
+export function newBests(workouts, record) {
+  const earlier = workouts.filter((w) => w.id !== record.id && w.finishedAt < record.finishedAt)
+  const out = []
+  for (const ex of record.exercises) {
+    if (!ex.sets.length || ex.swapId) continue
+    const best = bestSet(ex)
+    let prev = null
+    for (const w of earlier) {
+      for (const e of w.exercises) {
+        if (e.trackId !== ex.trackId || e.levelIndex !== ex.levelIndex || !e.sets.length || e.swapId) continue
+        const b = bestSet(e)
+        if (!prev || beats(ex.type, b, prev)) prev = b
+      }
+    }
+    if (prev && beats(ex.type, best, prev)) out.push({ trackId: ex.trackId, levelName: ex.levelName, type: ex.type, best, prev })
+  }
+  return out
+}
+
 export function levelsWithData(workouts, trackId) {
   const set = new Set()
   for (const w of workouts) for (const ex of w.exercises) if (ex.trackId === trackId && ex.sets.length && !ex.swapId) set.add(ex.levelIndex)

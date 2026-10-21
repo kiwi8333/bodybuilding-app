@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { TRACKS } from '../data/tracks.js'
 import { SWAPS, findSwap } from '../data/swaps.js'
 import { MOBILITY_ROUTINE, mobilityTotalSeconds } from '../data/mobility.js'
-import { bmr, dailyTargets, dayTotals, weeklyCheckIn } from './nutrition.js'
+import { bmr, dailyTargets, dayTotals, goalProjection, loggingStreak, mealForTime, weeklyCheckIn } from './nutrition.js'
 import { estimatedMaxHr, heartZones, targetZonesFor, zoneRangeText } from './heart.js'
 import { DELOAD_WORKOUTS, WORKOUTS_BETWEEN_DELOADS, afterWorkout, deloadDue, initialDeload, snoozeDeload, startDeload } from './deload.js'
 import { evaluate, initialTrackState } from './progression.js'
@@ -73,7 +73,41 @@ describe('nutrition', () => {
   })
 
   it('totals a day', () => {
-    expect(dayTotals([{ kcal: 72, protein: 6.3 }, { kcal: 165, protein: 31 }])).toEqual({ kcal: 237, protein: 37.3 })
+    // Older entries without carbs/fat count as zero and mark the macros incomplete.
+    expect(dayTotals([{ kcal: 72, protein: 6.3 }, { kcal: 165, protein: 31 }])).toEqual({ kcal: 237, protein: 37.3, carbs: 0, fat: 0, macrosComplete: false })
+    expect(dayTotals([{ kcal: 72, protein: 6.3, carbs: 0.4, fat: 4.8 }, { kcal: 105, protein: 1.3, carbs: 27, fat: 0.4 }])).toEqual({ kcal: 177, protein: 7.6, carbs: 27.4, fat: 5.2, macrosComplete: true })
+  })
+
+  it('a chosen weight-loss pace sets the deficit, and macros fill the calories', () => {
+    const profile = { sex: 'male', birthYear: 1996, heightCm: 180 }
+    const n = { activity: 'moderate', goal: 'lose', calorieAdjust: 0, weeklyRate: 0.5 }
+    const base = dailyTargets(profile, { ...n, weeklyRate: null }, [{ date: '2026-09-14', kg: 80 }], now)
+    const paced = dailyTargets(profile, n, [{ date: '2026-09-14', kg: 80 }], now)
+    expect(base.kcal - paced.kcal).toBe(150) // 550 kcal a day instead of the standard 400
+    expect(paced.protein * 4 + paced.fat * 9 + paced.carbs * 4).toBeGreaterThan(paced.kcal - 10)
+    expect(paced.protein * 4 + paced.fat * 9 + paced.carbs * 4).toBeLessThan(paced.kcal + 10)
+  })
+
+  it('projects the date a goal weight is reached', () => {
+    const p = goalProjection({ goal: 'lose', goalWeight: 75, weeklyRate: 0.5 }, 80, now)
+    expect(p).toMatchObject({ kgToGo: 5, weeks: 10, reached: false })
+    expect(Math.round((p.date - now) / (7 * 24 * 3600 * 1000))).toBe(10)
+    expect(goalProjection({ goal: 'lose', goalWeight: 80, weeklyRate: 0.5 }, 79.5, now).reached).toBe(true)
+    expect(goalProjection({ goal: 'lose', goalWeight: null }, 80, now)).toBeNull()
+  })
+
+  it('counts days logged in a row', () => {
+    const log = { '2026-09-12': [{}], '2026-09-13': [{}], '2026-09-14': [{}], '2026-09-10': [{}] }
+    expect(loggingStreak(log, '2026-09-14')).toBe(3)
+    expect(loggingStreak(log, '2026-09-15')).toBe(3) // nothing yet today
+    expect(loggingStreak(log, '2026-09-17')).toBe(0)
+  })
+
+  it('suggests a meal from the time of day', () => {
+    expect(mealForTime(new Date('2026-09-14T08:00:00'))).toBe('breakfast')
+    expect(mealForTime(new Date('2026-09-14T12:30:00'))).toBe('lunch')
+    expect(mealForTime(new Date('2026-09-14T19:00:00'))).toBe('dinner')
+    expect(mealForTime(new Date('2026-09-14T16:00:00'))).toBe('snacks')
   })
 
   it('weekly check-in suggests +150 kcal when not gaining on a gain goal', () => {

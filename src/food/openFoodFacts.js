@@ -28,6 +28,11 @@ export function parseProduct(p) {
   if (!Number.isFinite(kcal) || kcal < 0 || kcal > 950) return null
   let protein = toNum(n.proteins_100g)
   if (!Number.isFinite(protein) || protein < 0 || protein > 100) protein = 0
+  // Carbs and fat are optional: missing or impossible values stay unknown.
+  const grams = (v) => {
+    const g = toNum(v)
+    return Number.isFinite(g) && g >= 0 && g <= 100 ? Math.round(g * 10) / 10 : null
+  }
   const name = clean(p.product_name, 80) || clean(p.product_name_en, 80) || clean(p.generic_name, 80)
   if (!name) return null
   const serving = toNum(p.serving_quantity)
@@ -38,6 +43,8 @@ export function parseProduct(p) {
     brand: clean(String(p.brands ?? '').split(',')[0], 40),
     kcal100: Math.round(kcal),
     protein100: Math.round(protein * 10) / 10,
+    carbs100: grams(n.carbohydrates_100g),
+    fat100: grams(n.fat_100g),
     servingG: hasServing ? Math.round(serving * 10) / 10 : null,
     servingLabel: hasServing ? clean(p.serving_size, 30) || `${Math.round(serving)} g` : null,
   }
@@ -59,6 +66,8 @@ export function portionOf(food, grams) {
     name: `${shortLabel} (${amount})`,
     kcal: Math.round((food.kcal100 * g) / 100),
     protein: Math.round(((food.protein100 * g) / 100) * 10) / 10,
+    carbs: food.carbs100 == null ? null : Math.round(((food.carbs100 * g) / 100) * 10) / 10,
+    fat: food.fat100 == null ? null : Math.round(((food.fat100 * g) / 100) * 10) / 10,
   }
 }
 

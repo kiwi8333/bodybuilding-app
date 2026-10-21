@@ -3,6 +3,17 @@ import { Link } from 'react-router-dom'
 import { useStore } from '../store/StoreContext.jsx'
 import { DEFAULT_EQUIPMENT, completeOnboarding } from '../logic/state.js'
 import { TRACKS } from '../data/tracks.js'
+import { GYM_TRACKS } from '../data/gymTracks.js'
+import { loadLabel } from '../lib/describe.js'
+
+const WHERE = [
+  { id: 'home', label: 'Home' },
+  { id: 'gym', label: 'Gym' },
+  { id: 'both', label: 'Both' },
+]
+
+// Gym lifts that take a weight, with their suggested starting load.
+const GYM_LIFTS = Object.values(GYM_TRACKS).filter((t) => t.type === 'weighted')
 
 const PUSHUP_OPTIONS = [
   { levelIndex: 0, label: 'Counter', hint: 'Hands on a kitchen counter' },
@@ -17,6 +28,10 @@ export default function Onboarding() {
   const [walkSpeed, setWalkSpeed] = useState(3.0)
   const [jogSpeed, setJogSpeed] = useState(4.5)
   const [pushupLevel, setPushupLevel] = useState(0)
+  const [where, setWhere] = useState('home')
+  const [gymWeights, setGymWeights] = useState(() => Object.fromEntries(GYM_LIFTS.map((t) => [t.id, String(t.levels[0].startWeight)])))
+  const atHome = where !== 'gym'
+  const atGym = where !== 'home'
   const [agreed, setAgreed] = useState(false)
   const [error, setError] = useState(null)
 
@@ -31,6 +46,8 @@ export default function Onboarding() {
           walkSpeed: Number(walkSpeed),
           jogSpeed: Number(jogSpeed),
           startLevels: { pushup: pushupLevel },
+          startWeights: atGym ? gymWeights : undefined,
+          trainAt: where === 'gym' ? 'gym' : 'home',
         }),
       )
     } catch (err) {
@@ -47,8 +64,9 @@ export default function Onboarding() {
         <span className="eyebrow">Welcome to Forge</span>
         <h1>Build muscle. Get fit.</h1>
         <p className="text-2">
-          Three full-body dumbbell sessions a week, each finished with a treadmill session that takes you from walking to
-          running 20 minutes non-stop. The app tells you exactly what to lift and increases the challenge automatically.
+          Three full-body sessions a week, at home with dumbbells or in a full gym, each finished with a treadmill session that
+          takes you from walking to running 20 minutes non-stop. The app tells you exactly what to lift and increases the
+          challenge automatically. Food tracking and fasting are built in.
         </p>
       </div>
 
@@ -62,26 +80,79 @@ export default function Onboarding() {
 
       <section className="card">
         <div className="stack">
-          <h2>Your dumbbells</h2>
-          <p className="hint">
-            Weight is per dumbbell. With plates, the jump is usually two of your smallest plates (e.g. 2 × 1.25 kg = 2.5 kg).
-          </p>
+          <h2>Where do you train?</h2>
+          <p className="hint">Pick Both if you switch between home and a gym. You can change this any time on the Today or Plan screen.</p>
         </div>
-        <div className="grid-2" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }}>
-          <label className="field">
-            Lightest (kg)
-            <input className="input" type="number" inputMode="decimal" step="0.25" min="0.5" value={eq.minWeight} onChange={setEqField('minWeight')} required />
-          </label>
-          <label className="field">
-            Jump (kg)
-            <input className="input" type="number" inputMode="decimal" step="0.25" min="0.25" value={eq.increment} onChange={setEqField('increment')} required />
-          </label>
-          <label className="field">
-            Heaviest (kg)
-            <input className="input" type="number" inputMode="decimal" step="0.25" min="0.5" value={eq.maxWeight} onChange={setEqField('maxWeight')} required />
-          </label>
+        <div className="segmented" role="radiogroup" aria-label="Where do you train?">
+          {WHERE.map((w) => (
+            <button type="button" key={w.id} role="radio" aria-checked={where === w.id} className={where === w.id ? 'on' : ''} onClick={() => setWhere(w.id)}>
+              {w.label}
+            </button>
+          ))}
         </div>
       </section>
+
+      {atGym && (
+        <section className="card">
+          <div className="stack">
+            <h2>Gym starting weights</h2>
+            <p className="hint">
+              Enter a weight you could lift for the top of the rep range with 2 reps to spare. Not sure? Keep the suggestion and adjust it in your first
+              session. Your gym’s plate and stack sizes can be set later in Settings → My gym.
+            </p>
+          </div>
+          <ul className="clean gym-start-list">
+            {GYM_LIFTS.map((t) => {
+              const level = t.levels[0]
+              return (
+                <li key={t.id}>
+                  <span className="stack" style={{ gap: 1, minWidth: 0 }}>
+                    <span>{level.name}</span>
+                    <span className="hint">
+                      {t.sets} × {level.repMin}–{level.repMax} · kg {loadLabel(t, 0)}
+                    </span>
+                  </span>
+                  <input
+                    className="input"
+                    type="number"
+                    inputMode="decimal"
+                    step="0.5"
+                    min="0"
+                    aria-label={`${level.name} starting weight in kg`}
+                    value={gymWeights[t.id]}
+                    onChange={(e) => setGymWeights((g) => ({ ...g, [t.id]: e.target.value }))}
+                  />
+                </li>
+              )
+            })}
+          </ul>
+        </section>
+      )}
+
+      {atHome && (
+        <section className="card">
+          <div className="stack">
+            <h2>Your dumbbells</h2>
+            <p className="hint">
+              Weight is per dumbbell. With plates, the jump is usually two of your smallest plates (e.g. 2 × 1.25 kg = 2.5 kg).
+            </p>
+          </div>
+          <div className="grid-2" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }}>
+            <label className="field">
+              Lightest (kg)
+              <input className="input" type="number" inputMode="decimal" step="0.25" min="0.5" value={eq.minWeight} onChange={setEqField('minWeight')} required />
+            </label>
+            <label className="field">
+              Jump (kg)
+              <input className="input" type="number" inputMode="decimal" step="0.25" min="0.25" value={eq.increment} onChange={setEqField('increment')} required />
+            </label>
+            <label className="field">
+              Heaviest (kg)
+              <input className="input" type="number" inputMode="decimal" step="0.25" min="0.5" value={eq.maxWeight} onChange={setEqField('maxWeight')} required />
+            </label>
+          </div>
+        </section>
+      )}
 
       <section className="card">
         <div className="stack">
@@ -103,21 +174,23 @@ export default function Onboarding() {
         </div>
       </section>
 
-      <section className="card">
-        <div className="stack">
-          <h2>Push-up starting point</h2>
-          <p className="hint">Pick the hardest one you can do for at least 8 clean reps. If unsure, start easier. You will move up quickly.</p>
-        </div>
-        <div className="segmented" role="radiogroup" aria-label="Push-up starting level">
-          {PUSHUP_OPTIONS.map((o) => (
-            <button type="button" key={o.levelIndex} role="radio" aria-checked={pushupLevel === o.levelIndex} className={pushupLevel === o.levelIndex ? 'on' : ''} onClick={() => setPushupLevel(o.levelIndex)}>
-              {o.label}
-            </button>
-          ))}
-        </div>
-        <p className="small text-2">{TRACKS.pushup.levels[pushupLevel].name}</p>
-        <p className="hint">Other exercises start with light suggested weights. On your first session, adjust them so the last 2 reps of each set are hard but clean.</p>
-      </section>
+      {atHome && (
+        <section className="card">
+          <div className="stack">
+            <h2>Push-up starting point</h2>
+            <p className="hint">Pick the hardest one you can do for at least 8 clean reps. If unsure, start easier. You will move up quickly.</p>
+          </div>
+          <div className="segmented" role="radiogroup" aria-label="Push-up starting level">
+            {PUSHUP_OPTIONS.map((o) => (
+              <button type="button" key={o.levelIndex} role="radio" aria-checked={pushupLevel === o.levelIndex} className={pushupLevel === o.levelIndex ? 'on' : ''} onClick={() => setPushupLevel(o.levelIndex)}>
+                {o.label}
+              </button>
+            ))}
+          </div>
+          <p className="small text-2">{TRACKS.pushup.levels[pushupLevel].name}</p>
+          <p className="hint">Other exercises start with light suggested weights. On your first session, adjust them so the last 2 reps of each set are hard but clean.</p>
+        </section>
+      )}
 
       <section className="card">
         <h2>Train safely</h2>

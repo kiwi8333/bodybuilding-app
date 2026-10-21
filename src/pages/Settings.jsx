@@ -2,7 +2,7 @@ import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store/StoreContext.jsx'
 import { availableWeights, formatKg } from '../logic/weights.js'
-import { createInitialState, dateKey, markBackedUp, parseFullBackup, serializeBackup, updateCardioSpeeds, updateEquipment } from '../logic/state.js'
+import { createInitialState, dateKey, markBackedUp, parseFullBackup, serializeBackup, updateCardioSpeeds, updateEquipment, updateGymGear, GYM_GEAR_LABELS } from '../logic/state.js'
 import { listPhotos, replaceAllPhotos, validatePhoto } from '../store/photos.js'
 import { disablePush } from '../reminders/client.js'
 import ReminderSettings from '../components/ReminderSettings.jsx'
@@ -28,6 +28,8 @@ export default function Settings() {
   const [nameStatus, setNameStatus] = useState(null)
   const [eq, setEq] = useState({ ...state.equipment })
   const [eqStatus, setEqStatus] = useState(null)
+  const [gym, setGym] = useState(() => structuredClone(state.equipment.gym))
+  const [gymStatus, setGymStatus] = useState(null)
   const [speeds, setSpeeds] = useState({ walkSpeed: state.cardio.walkSpeed, jogSpeed: state.cardio.jogSpeed })
   const [speedStatus, setSpeedStatus] = useState(null)
   const [backupStatus, setBackupStatus] = useState(null)
@@ -51,10 +53,22 @@ export default function Settings() {
     e.preventDefault()
     if (state.activeWorkout) return setEqStatus({ ok: false, text: 'Finish or discard your current workout first.' })
     try {
-      apply((s) => updateEquipment(s, eq))
+      // Only the home dumbbells change here; keep the gym steps as they are now.
+      apply((s) => updateEquipment(s, { ...eq, gym: s.equipment.gym }))
       setEqStatus({ ok: true, text: 'Saved. Suggested weights now use this dumbbell set.' })
     } catch (err) {
       setEqStatus({ ok: false, text: err.message })
+    }
+  }
+
+  function saveGym(e) {
+    e.preventDefault()
+    if (state.activeWorkout) return setGymStatus({ ok: false, text: 'Finish or discard your current workout first.' })
+    try {
+      apply((s) => updateGymGear(s, gym))
+      setGymStatus({ ok: true, text: 'Saved. Gym weights now snap to these steps.' })
+    } catch (err) {
+      setGymStatus({ ok: false, text: err.message })
     }
   }
 
@@ -196,6 +210,59 @@ export default function Settings() {
               Save dumbbells
             </button>
             <Status status={eqStatus} />
+          </form>
+
+          <form className="card" onSubmit={saveGym}>
+            <div className="stack" style={{ gap: 4 }}>
+              <h2>My gym</h2>
+              <p className="hint">
+                Match Gym A and B to the equipment at your gym, so every suggested weight is one you can actually load. Barbell weights are the total, bar
+                included (with 1.25 kg plates the jump is 2.5 kg).
+              </p>
+            </div>
+            {Object.entries(GYM_GEAR_LABELS).map(([gear, title]) => {
+              let steps = null
+              try {
+                steps = availableWeights({ minWeight: Number(gym[gear].minWeight), increment: Number(gym[gear].increment), maxWeight: Number(gym[gear].maxWeight) })
+              } catch {
+                steps = null
+              }
+              return (
+                <fieldset className="gear-row" key={gear}>
+                  <legend>{title}</legend>
+                  <div className="grid-2" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }}>
+                    {[
+                      ['minWeight', 'Lightest'],
+                      ['increment', 'Jump'],
+                      ['maxWeight', 'Heaviest'],
+                    ].map(([key, label]) => (
+                      <label className="field" key={key}>
+                        {label} (kg)
+                        <input
+                          className="input"
+                          type="number"
+                          inputMode="decimal"
+                          step="0.25"
+                          value={gym[gear][key]}
+                          onChange={(e) => setGym((g) => ({ ...g, [gear]: { ...g[gear], [key]: e.target.value } }))}
+                          required
+                        />
+                      </label>
+                    ))}
+                  </div>
+                  {steps && steps.length > 1 && (
+                    <p className="hint">
+                      {formatKg(steps[0])}, {formatKg(steps[1])}
+                      {steps.length > 2 ? `, ${formatKg(steps[2])} … ${formatKg(steps.at(-1))}` : ''}
+                    </p>
+                  )}
+                </fieldset>
+              )
+            })}
+            <button className="btn" type="submit">
+              Save gym equipment
+            </button>
+            <Status status={gymStatus} />
           </form>
 
           <form className="card" onSubmit={saveSpeeds}>

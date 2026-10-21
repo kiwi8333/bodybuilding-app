@@ -7,7 +7,7 @@ const oats = {
   brands: 'Quaker, PepsiCo',
   serving_size: '40 g',
   serving_quantity: 40,
-  nutriments: { 'energy-kcal_100g': 375, proteins_100g: 11 },
+  nutriments: { 'energy-kcal_100g': 375, proteins_100g: 11, carbohydrates_100g: 60, fat_100g: 8 },
 }
 
 const fakeFetch = (body, status = 200, seen = []) => async (url) => {
@@ -23,6 +23,8 @@ describe('Open Food Facts parsing', () => {
       brand: 'Quaker',
       kcal100: 375,
       protein100: 11,
+      carbs100: 60,
+      fat100: 8,
       servingG: 40,
       servingLabel: '40 g',
     })
@@ -38,7 +40,9 @@ describe('Open Food Facts parsing', () => {
 
   it('works out a portion and keeps the name within the log limit', () => {
     const food = parseProduct(oats)
-    expect(portionOf(food, 40)).toEqual({ name: 'Quaker Rolled Oats (40 g)', kcal: 150, protein: 4.4 })
+    expect(portionOf(food, 40)).toEqual({ name: 'Quaker Rolled Oats (40 g)', kcal: 150, protein: 4.4, carbs: 24, fat: 3.2 })
+    // Unknown carbs or fat stay unknown rather than becoming zero.
+    expect(portionOf({ ...food, carbs100: null, fat100: null }, 40)).toMatchObject({ carbs: null, fat: null })
     const long = { ...food, brand: '', name: 'A'.repeat(80) }
     expect(portionOf(long, 150).name.length).toBeLessThanOrEqual(60)
     expect(portionOf(long, 150).name.endsWith('(150 g)')).toBe(true)

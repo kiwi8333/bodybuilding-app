@@ -14,10 +14,11 @@ import {
   planHours,
   reachedGoal,
   stageAt,
+  stageTimes,
 } from '../logic/fasting.js'
 import { abandonFast, addBodyweight, beginFast, changeFastStart, dateKey, finishFast, putBackFastLog, removeFastLog, setFastPlan } from '../logic/state.js'
 import { useNow } from '../components/useNow.js'
-import ProgressRing from '../components/ProgressRing.jsx'
+import FastOrbit from '../components/FastOrbit.jsx'
 import SwipeRow from '../components/SwipeRow.jsx'
 import EmptyState from '../components/EmptyState.jsx'
 import { FastIcon } from '../components/icons.jsx'
@@ -103,7 +104,7 @@ function StageStrip({ hours }) {
         return (
           <li key={s.id} className={`stage-seg ${s.id === current.id ? 'now' : hours >= s.from ? 'past' : ''}`} title={s.name}>
             <span className="stage-bar">
-              <span style={{ width: `${fill * 100}%` }} />
+              <span style={{ width: `${fill * 100}%`, background: s.color }} />
             </span>
             <span className="stage-hour">{s.from}h</span>
           </li>
@@ -133,11 +134,19 @@ function WeekChart({ logs, goal }) {
           const x = 8 + i * 39
           return (
             <g key={d.date}>
-              <rect x={x} y={H - Math.max(h, 3)} width="26" height={Math.max(h, 3)} rx="6" className={d.hours === 0 ? 'week-bar empty' : d.reached ? 'week-bar good' : 'week-bar'} />
+              <rect
+                x={x}
+                y={H - Math.max(h, 3)}
+                width="26"
+                height={Math.max(h, 3)}
+                rx="6"
+                className={d.hours === 0 ? 'week-bar empty' : 'week-bar'}
+                style={d.hours ? { fill: stageAt(d.hours).color, opacity: d.reached ? 1 : 0.55 } : undefined}
+              />
               <text x={x + 13} y={H + 16} textAnchor="middle" className="week-day">
                 {d.weekday}
               </text>
-              <title>{d.hours ? `${d.date}: ${formatDuration(d.hours)}` : `${d.date}: no fast`}</title>
+              <title>{d.hours ? `${d.date}: ${formatDuration(d.hours)}, reached ${stageAt(d.hours).name}` : `${d.date}: no fast`}</title>
             </g>
           )
         })}
@@ -156,6 +165,8 @@ export default function Fasting() {
   const [editing, setEditing] = useState(false)
   const [startInput, setStartInput] = useState('')
   const [weight, setWeight] = useState('')
+  const [showStages, setShowStages] = useState(false)
+  const [burstKey, setBurstKey] = useState(0)
 
   const elapsed = active ? hoursBetween(active.startedAt, now) : 0
   const goal = active ? active.targetHours : planHours(f)
@@ -174,6 +185,22 @@ export default function Fasting() {
     }
     celebrated.current = reached
   }, [reached, goal, toast])
+
+  // Crossing into a new stage with the app open: a burst on the ring, a buzz
+  // and a message. Opening the page mid-fast does not celebrate.
+  const lastStage = useRef(active ? stage.id : null)
+  useEffect(() => {
+    if (!active) {
+      lastStage.current = null
+      return
+    }
+    if (lastStage.current && lastStage.current !== stage.id && stage.from > (FAST_STAGES.find((s) => s.id === lastStage.current)?.from ?? 0)) {
+      haptic('success')
+      setBurstKey(Date.now())
+      toast({ message: `New stage: ${stage.name}` })
+    }
+    lastStage.current = stage.id
+  }, [active, stage, toast])
 
   const act = (fn) => {
     try {
@@ -231,18 +258,12 @@ export default function Fasting() {
 
       <section className={`card fast-hero ${active ? 'running' : ''}`}>
         <div className="fast-ring-wrap">
-          <ProgressRing
-            value={active ? (goal ? elapsed : elapsed % 24) : 0}
-            max={goal ?? 24}
-            size={252}
-            stroke={16}
-            tone={reached ? 'good' : 'accent'}
-            linear={Boolean(active)}
-            label={active ? 'Fast progress' : undefined}
-          >
+          <FastOrbit hours={elapsed} active={Boolean(active)} goal={goal} burstKey={burstKey} onShowStages={() => setShowStages((v) => !v)}>
             {active ? (
               <>
-                <span className="fast-label">{reached ? 'Goal reached' : stage.name}</span>
+                <span className="fast-label stage-text" style={{ '--c': reached ? 'var(--good)' : stage.color }}>
+                  {reached ? 'Goal reached' : stage.name}
+                </span>
                 <span className="fast-clock">{formatClockHours(elapsed)}</span>
                 <span className="fast-sub">
                   {goal ? (reached ? `+${formatDuration(elapsed - goal)} past ${goal}h` : `${formatDuration(goal - elapsed)} to go · ${pct}%`) : 'Open fast'}
@@ -255,8 +276,36 @@ export default function Fasting() {
                 <span className="fast-sub">{last ? `Last fast ended ${formatDuration(hoursBetween(last.endedAt, now))} ago` : 'Pick a plan and start'}</span>
               </>
             )}
-          </ProgressRing>
+          </FastOrbit>
         </div>
+        <p className="hint" style={{ textAlign: 'center' }}>
+          Tap or hold the ring for {active ? 'when you reach each stage' : 'the fasting stages'}.
+        </p>
+        {showStages && (
+          <ol className="clean stage-times" aria-label="Fasting stages">
+            {(active ? stageTimes(active.startedAt, new Date(now)) : FAST_STAGES).map((s) => (
+              <li key={s.id} className={active && s.reached ? 'reached' : ''} style={{ '--c': s.color }}>
+                <span className="stage-times-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" width="18" height="18">
+                    <path d={s.icon} fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </span>
+                <span className="stack" style={{ gap: 1, flex: 1, minWidth: 0 }}>
+                  <strong>{s.name}</strong>
+                  <span className="hint">
+                    From {s.from}h
+                    {active && (s.reached ? ` · reached ${timeOf(s.at.toISOString())}` : ` · ${timeOf(s.at.toISOString())} ${dayOf(s.at.toISOString())}, in ${formatDuration((s.at - now) / 3600000)}`)}
+                  </span>
+                </span>
+                {active && s.id === stage.id && (
+                  <span className="pill stage-text" style={{ background: `${s.color}26` }}>
+                    Now
+                  </span>
+                )}
+              </li>
+            ))}
+          </ol>
+        )}
 
         {active ? (
           <>
@@ -380,13 +429,23 @@ export default function Fasting() {
               .slice(0, 20)
               .map((l) => (
                 <SwipeRow key={l.id} className="seg-row" onDelete={() => remove(l)}>
-                  <span className="stack" style={{ gap: 1 }}>
-                    <span>
-                      {dayOf(l.endedAt)} · <strong>{formatDuration(fastHours(l))}</strong>
+                  <span className="row" style={{ gap: 10, minWidth: 0 }}>
+                    <span className="fast-stage-dot" style={{ '--c': stageAt(fastHours(l)).color }} title={`Reached ${stageAt(fastHours(l)).name}`} aria-hidden="true">
+                      <svg viewBox="0 0 24 24" width="14" height="14">
+                        <path d={stageAt(fastHours(l)).icon} fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
                     </span>
-                    <span className="hint">
-                      {timeOf(l.startedAt)} → {timeOf(l.endedAt)}
-                      {l.targetHours ? ` · goal ${l.targetHours}h` : ' · open'}
+                    <span className="stack" style={{ gap: 1 }}>
+                      <span>
+                        {dayOf(l.endedAt)} · <strong>{formatDuration(fastHours(l))}</strong>
+                      </span>
+                      <span className="hint">
+                        {timeOf(l.startedAt)} → {timeOf(l.endedAt)}
+                        {l.targetHours ? ` · goal ${l.targetHours}h` : ' · open'}
+                      </span>
+                      <span className="hint stage-text" style={{ '--c': stageAt(fastHours(l)).color }}>
+                        Reached {stageAt(fastHours(l)).name.toLowerCase()}
+                      </span>
                     </span>
                   </span>
                   <span className="row" style={{ gap: 8 }}>

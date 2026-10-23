@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 // A circular progress meter. The arc eases to its new length (CSS), filling
 // from empty when it first appears, and `tone` switches the colour: 'accent',
 // 'good' or 'warn'. `linear` is for countdowns that update every tick.
-export default function ProgressRing({ value, max, size = 44, stroke = 5, tone = 'accent', label, linear = false, children }) {
+export default function ProgressRing({ value, max, size = 44, stroke = 5, tone = 'accent', color, label, linear = false, children }) {
   const r = (size - stroke) / 2
   const c = 2 * Math.PI * r
   const pct = max > 0 ? Math.min(1, Math.max(0, value / max)) : 0
@@ -36,7 +36,7 @@ export default function ProgressRing({ value, max, size = 44, stroke = 5, tone =
           fill="none"
           strokeDasharray={c}
           strokeDashoffset={c * (1 - drawn)}
-          style={{ opacity: drawn > 0 ? 1 : 0 }}
+          style={{ opacity: drawn > 0 ? 1 : 0, stroke: color }}
           transform={`rotate(-90 ${size / 2} ${size / 2})`}
         />
       </svg>

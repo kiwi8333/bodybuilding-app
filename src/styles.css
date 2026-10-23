@@ -2680,3 +2680,327 @@ h2 {
   flex: none;
   white-space: nowrap;
 }
+
+/* ---------- Fasting orbit ring ---------- */
+.orbit {
+  --orbit-bg: #15181b;
+  position: relative;
+  width: 300px;
+  height: 300px;
+  max-width: 100%;
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+  border-radius: 50%;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  user-select: none;
+  transition: transform 0.2s var(--ease-out);
+}
+
+.orbit:active {
+  transform: scale(0.98);
+}
+
+.orbit:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+}
+
+.orbit svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.orbit-dots {
+  stroke: color-mix(in srgb, var(--text) 10%, transparent);
+  stroke-width: 1;
+  stroke-dasharray: 2 10;
+  transform-origin: 150px 150px;
+  animation: orbit-spin 24s linear infinite;
+}
+
+.orbit-fill {
+  transition: d 0.6s var(--ease-out);
+}
+
+.orbit-goal line {
+  stroke: var(--text);
+}
+
+.orbit-goal text {
+  fill: var(--text);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.orbit-icon.now {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: orbit-pulse 1.6s ease-in-out infinite;
+}
+
+.orbit-head-glow {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: orbit-glow 2s ease-in-out infinite;
+}
+
+.orbit-center {
+  position: absolute;
+  inset: 62px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  text-align: center;
+  pointer-events: none;
+}
+
+.orbit-center .fast-clock {
+  font-size: 2.5rem;
+}
+
+.ember {
+  position: relative;
+  width: 100px;
+  height: 64px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 2px;
+}
+
+.ember > span {
+  position: absolute;
+  border-radius: 50%;
+}
+
+.ember-halo {
+  background: var(--stage);
+  opacity: 0.35;
+  filter: blur(6px);
+  transition:
+    width 0.6s var(--ease-out),
+    height 0.6s var(--ease-out),
+    background-color 0.6s;
+  animation: ember-halo 2.4s ease-in-out infinite;
+}
+
+.ember-mid {
+  background: radial-gradient(circle at 50% 60%, #fff6e6, var(--stage) 70%);
+  border-radius: 50% 50% 46% 46% !important;
+  transition:
+    width 0.6s var(--ease-out),
+    height 0.6s var(--ease-out);
+  animation: ember-flicker 1.1s ease-in-out infinite alternate;
+}
+
+.ember-core {
+  background: #fff;
+  opacity: 0.9;
+  animation: ember-flicker 0.9s ease-in-out infinite alternate;
+}
+
+.orbit:not(.on) .ember-halo {
+  opacity: 0.15;
+}
+
+.orbit:not(.on) .ember-mid {
+  background: radial-gradient(circle at 50% 60%, #8a8f94, #3a3f44 70%);
+  animation: none;
+}
+
+.orbit:not(.on) .ember-core {
+  opacity: 0.3;
+  animation: none;
+}
+
+.ember-spark {
+  bottom: 8px;
+  width: 5px;
+  height: 5px;
+  background: var(--stage);
+  opacity: 0;
+  animation: ember-rise 2.2s ease-out infinite;
+}
+
+.orbit-burst {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.orbit-burst i {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  margin: -4px;
+  border-radius: 50%;
+  background: var(--stage);
+  opacity: 0;
+  animation: orbit-burst 1s var(--ease-out);
+}
+
+.orbit-burst i:nth-child(odd) {
+  background: #fff;
+  width: 5px;
+  height: 5px;
+  margin: -2.5px;
+}
+
+@keyframes orbit-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes orbit-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.18);
+  }
+}
+
+@keyframes orbit-glow {
+  0%,
+  100% {
+    opacity: 0.25;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.55;
+    transform: scale(1.4);
+  }
+}
+
+@keyframes ember-halo {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.12);
+  }
+}
+
+@keyframes ember-flicker {
+  from {
+    transform: scale(0.94) translateY(1px);
+  }
+  to {
+    transform: scale(1.06) translateY(-2px);
+  }
+}
+
+@keyframes ember-rise {
+  0% {
+    opacity: 0;
+    transform: translateY(0) scale(1);
+  }
+  15% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-56px) scale(0.3);
+  }
+}
+
+@keyframes orbit-burst {
+  0% {
+    opacity: 1;
+    transform: rotate(var(--a)) translateY(-60px) scale(1.2);
+  }
+  100% {
+    opacity: 0;
+    transform: rotate(var(--a)) translateY(-150px) scale(0.3);
+  }
+}
+
+@media (prefers-color-scheme: light) {
+  .orbit {
+    --orbit-bg: #ffffff;
+  }
+}
+
+/* Stage times (tap the ring) */
+.stage-times {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  animation: rise-in 0.3s var(--ease-out);
+}
+
+.stage-times li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: var(--surface-2);
+  opacity: 0.8;
+}
+
+.stage-times li.reached {
+  opacity: 1;
+}
+
+.stage-times-icon,
+.fast-stage-dot {
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  color: var(--c);
+  background: color-mix(in srgb, var(--c) 18%, transparent);
+}
+
+.stage-times-icon {
+  width: 32px;
+  height: 32px;
+}
+
+.fast-stage-dot {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .orbit-burst,
+  .ember-spark {
+    display: none;
+  }
+}
+
+/* Text in a stage colour: as-is on dark, darkened enough to read on light. */
+.stage-text {
+  color: var(--c);
+}
+
+@media (prefers-color-scheme: light) {
+  .stage-text,
+  .stage-times-icon,
+  .fast-stage-dot {
+    color: color-mix(in srgb, var(--c) 55%, #000);
+  }
+}
+
+.orbit-track {
+  stroke-opacity: 0.18;
+}
+
+@media (prefers-color-scheme: light) {
+  .orbit-track {
+    stroke-opacity: 0.34;
+  }
+}

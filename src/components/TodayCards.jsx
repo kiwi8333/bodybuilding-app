@@ -168,7 +168,7 @@ export function FastingCard() {
     <section className="card">
       <div className="row between">
         <div className="row" style={{ gap: 12 }}>
-          <ProgressRing value={f.active ? (goal ? elapsed : elapsed % 24) : 0} max={goal ?? 24} size={48} stroke={5} tone={f.active && goal && elapsed >= goal ? 'good' : 'accent'} />
+          <ProgressRing value={f.active ? (goal ? elapsed : elapsed % 24) : 0} max={goal ?? 24} size={48} stroke={5} color={f.active ? stageAt(elapsed).color : undefined} />
           <div className="stack" style={{ gap: 2 }}>
             <h2>{f.active ? `Fasting · ${formatDuration(elapsed)}` : 'Fasting'}</h2>
             <span className="small text-2">

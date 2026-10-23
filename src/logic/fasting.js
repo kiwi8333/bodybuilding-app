@@ -27,13 +27,22 @@ export const MAX_BACKDATE_HOURS = 48
  * to fasting you are.
  */
 export const FAST_STAGES = [
-  { id: 'rising', from: 0, name: 'Blood sugar rising', text: 'You are digesting your last meal. Insulin is up and your body is storing energy.' },
-  { id: 'falling', from: 4, name: 'Blood sugar falling', text: 'Digestion is winding down. Insulin drops back towards normal.' },
-  { id: 'normal', from: 8, name: 'Blood sugar normal', text: 'Your body starts drawing on stored glycogen. Hunger often comes in waves now; water or black coffee help.' },
-  { id: 'fatburn', from: 12, name: 'Fat burning', text: 'Glycogen is running low, so your body turns increasingly to stored fat for fuel.' },
-  { id: 'ketosis', from: 18, name: 'Ketosis', text: 'Your liver makes ketones from fat. Many people feel steadier energy and less hunger here.' },
-  { id: 'autophagy', from: 24, name: 'Deep fast', text: 'Ketones keep rising and the body ramps up cellular recycling (autophagy). Mostly studied in animals; timing in people is uncertain.' },
+  { id: 'rising', from: 0, name: 'Blood sugar rising', short: 'Rising', color: '#7fd1ff', icon: 'M4 16l5-5 4 4 7-7M14 8h6v6', text: 'You are digesting your last meal. Insulin is up and your body is storing energy.' },
+  { id: 'falling', from: 4, name: 'Blood sugar falling', short: 'Falling', color: '#5aa8ff', icon: 'M4 8l5 5 4-4 7 7M14 16h6v-6', text: 'Digestion is winding down. Insulin drops back towards normal.' },
+  { id: 'normal', from: 8, name: 'Blood sugar normal', short: 'Normal', color: '#a497ff', icon: 'M3 12h4l2-4 4 8 2-4h6', text: 'Your body starts drawing on stored glycogen. Hunger often comes in waves now; water or black coffee help.' },
+  { id: 'fatburn', from: 12, name: 'Fat burning', short: 'Fat burn', color: '#ff7a1a', icon: 'M12 3c2 4 6 6 6 11a6 6 0 0 1-12 0c0-3 2-5 3-7 0 3 1 4 3 4 0-3-1-5 0-8z', text: 'Glycogen is running low, so your body turns increasingly to stored fat for fuel.' },
+  { id: 'ketosis', from: 18, name: 'Ketosis', short: 'Ketosis', color: '#ff5c93', icon: 'M13 2L4 14h7l-1 8 9-12h-7z', text: 'Your liver makes ketones from fat. Many people feel steadier energy and less hunger here.' },
+  { id: 'autophagy', from: 24, name: 'Deep fast', short: 'Deep', color: '#3ecf6e', icon: 'M4 12a8 8 0 0 1 14-5l2 2M20 4v5h-5M20 12a8 8 0 0 1-14 5l-2-2M4 20v-5h5', text: 'Ketones keep rising and the body ramps up cellular recycling (autophagy). Mostly studied in animals; timing in people is uncertain.' },
 ]
+
+// When a fast that started at `startedAt` reaches each stage.
+export function stageTimes(startedAt, now = new Date()) {
+  const start = new Date(startedAt).getTime()
+  return FAST_STAGES.map((s) => {
+    const at = new Date(start + s.from * 60 * 60 * 1000)
+    return { ...s, at, reached: at.getTime() <= now.getTime() }
+  })
+}
 
 export function initialFasting() {
   return { planId: '16:8', customHours: 16, active: null, logs: [] }

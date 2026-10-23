@@ -17,6 +17,7 @@ import {
   deleteFastLog,
   stageAt,
   startFast,
+  stageTimes,
 } from './fasting.js'
 import { beginFast, createInitialState, finishFast, normalizeState } from './state.js'
 
@@ -131,5 +132,19 @@ describe('fasting data', () => {
     expect(() => normalizeFasting({ planId: 'x', logs: [] }, fail)).toThrow(/planId/)
     expect(() => normalizeFasting({ planId: '16:8', logs: [{ id: 'a', startedAt: '2026-10-21T10:00:00Z', endedAt: '2026-10-20T10:00:00Z' }] }, fail)).toThrow(/before/)
     expect(() => normalizeFasting({ planId: '16:8', logs: 'no' }, fail)).toThrow(/list/)
+  })
+})
+
+describe('stage times and colours', () => {
+  it('works out when each stage is reached', () => {
+    const times = stageTimes('2026-10-20T20:00:00', new Date('2026-10-21T10:00:00'))
+    expect(times.map((t) => t.id)).toEqual(['rising', 'falling', 'normal', 'fatburn', 'ketosis', 'autophagy'])
+    expect(times[3].at.getTime()).toBe(new Date('2026-10-21T08:00:00').getTime())
+    expect(times.map((t) => t.reached)).toEqual([true, true, true, true, false, false])
+  })
+
+  it('gives every stage a distinct colour and an icon', () => {
+    expect(new Set(FAST_STAGES.map((s) => s.color)).size).toBe(FAST_STAGES.length)
+    for (const s of FAST_STAGES) expect(s.icon.length).toBeGreaterThan(10)
   })
 })

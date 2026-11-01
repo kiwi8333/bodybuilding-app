@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store/StoreContext.jsx'
 import { availableWeights, formatKg } from '../logic/weights.js'
@@ -8,6 +8,8 @@ import { disablePush } from '../reminders/client.js'
 import ReminderSettings from '../components/ReminderSettings.jsx'
 import { BodyAndHeartSettings } from '../components/HeartSettings.jsx'
 import { useDialogs } from '../components/Dialogs.jsx'
+import { MIN_PASSWORD, decryptBackup, encryptBackup, isEncryptedBackup } from '../lib/backupCrypto.js'
+import { requestPersistence, storageStatus } from '../lib/persist.js'
 
 function Status({ status }) {
   if (!status) return null
@@ -19,7 +21,7 @@ function Status({ status }) {
 }
 
 export default function Settings() {
-  const { confirm } = useDialogs()
+  const { confirm, prompt } = useDialogs()
   const { state, apply, replaceAll, readOnly } = useStore()
   const navigate = useNavigate()
   const onboarded = state.profile.onboarded
@@ -34,7 +36,34 @@ export default function Settings() {
   const [speedStatus, setSpeedStatus] = useState(null)
   const [backupStatus, setBackupStatus] = useState(null)
   const [includePhotos, setIncludePhotos] = useState(true)
+  const [protect, setProtect] = useState(true)
+  const [storage, setStorage] = useState(null)
   const fileRef = useRef(null)
+
+  useEffect(() => {
+    storageStatus().then(setStorage)
+  }, [])
+
+  // Asks for a new backup password twice. Resolves with it, or null if cancelled.
+  async function newPassword() {
+    const first = await prompt({
+      title: 'Protect your backup',
+      message: `Choose a password of at least ${MIN_PASSWORD} characters. You need it to restore; it cannot be recovered if you forget it.`,
+      inputLabel: 'Password',
+      inputType: 'password',
+      minLength: MIN_PASSWORD,
+      autoComplete: 'new-password',
+      confirmLabel: 'Next',
+    })
+    if (first === null) return null
+    const again = await prompt({ title: 'Type it again', inputLabel: 'Password', inputType: 'password', minLength: 1, autoComplete: 'new-password', confirmLabel: 'Back up' })
+    if (again === null) return null
+    if (again !== first) {
+      setBackupStatus({ ok: false, text: 'The passwords did not match. Nothing was saved; try again.' })
+      return null
+    }
+    return first
+  }
 
   let preview = null
   try {
@@ -92,8 +121,13 @@ export default function Settings() {
         return setBackupStatus({ ok: false, text: `Could not read photos: ${err.message}` })
       }
     }
-    const text = serializeBackup(state, new Date(), photos)
-    const filename = `forge-backup-${dateKey()}.json`
+    let text = serializeBackup(state, new Date(), photos)
+    if (protect) {
+      const password = await newPassword()
+      if (password === null) return
+      text = await encryptBackup(text, password)
+    }
+    const filename = `forge-backup-${dateKey()}${protect ? '-locked' : ''}.json`
     const blob = new Blob([text], { type: 'application/json' })
     const done = (message) => {
       apply((s) => markBackedUp(s))
@@ -127,7 +161,13 @@ export default function Settings() {
     if (!file) return
     if (file.size > 150 * 1024 * 1024) return setBackupStatus({ ok: false, text: 'That file is too large to be a Forge backup.' })
     try {
-      const { state: restored, photos } = parseFullBackup(await file.text(), validatePhoto)
+      let text = await file.text()
+      if (isEncryptedBackup(text)) {
+        const password = await prompt({ title: 'Enter the backup password', inputLabel: 'Password', inputType: 'password', autoComplete: 'current-password', confirmLabel: 'Unlock' })
+        if (password === null) return
+        text = await decryptBackup(text, password)
+      }
+      const { state: restored, photos } = parseFullBackup(text, validatePhoto)
       const summary = `${restored.workouts.length} workouts, ${restored.cardioLogs.length} cardio sessions, ${restored.bodyweight.length} bodyweight entries${photos ? `, ${photos.length} photos` : ''}`
       const ok = await confirm({
         title: 'Replace all data with this backup?',
@@ -304,6 +344,10 @@ export default function Settings() {
           <input type="checkbox" checked={includePhotos} onChange={(e) => setIncludePhotos(e.target.checked)} style={{ width: 20, height: 20, accentColor: 'var(--accent)' }} />
           Include progress photos (larger file)
         </label>
+        <label className="row small">
+          <input type="checkbox" checked={protect} onChange={(e) => setProtect(e.target.checked)} style={{ width: 20, height: 20, accentColor: 'var(--accent)' }} />
+          Protect the backup with a password (recommended)
+        </label>
         <div className="grid-2">
           <button className="btn primary" onClick={exportBackup} disabled={!onboarded}>
             Back up now
@@ -314,6 +358,25 @@ export default function Settings() {
         </div>
         <input ref={fileRef} type="file" accept="application/json,.json" onChange={importBackup} hidden />
         <Status status={backupStatus} />
+      </section>
+
+      <section className="card">
+        <div className="row between">
+          <h2>Storage</h2>
+          <span className={`pill ${storage === 'granted' ? 'good' : storage === 'denied' ? 'warn' : ''}`}>
+            {storage === 'granted' ? 'Protected' : storage === 'denied' ? 'Not protected' : storage === 'unsupported' ? 'Unknown' : '…'}
+          </span>
+        </div>
+        <p className="small text-2">
+          {storage === 'granted'
+            ? 'Your browser has agreed to keep Forge’s data, even when the phone is low on space.'
+            : 'Browsers can clear website data when space runs low, or after a week without a visit on iPhone. Add Forge to your home screen and keep backups.'}
+        </p>
+        {storage === 'denied' && (
+          <button className="btn small" style={{ alignSelf: 'flex-start' }} onClick={() => requestPersistence().then(setStorage)}>
+            Ask again
+          </button>
+        )}
       </section>
 
       <section className="card">

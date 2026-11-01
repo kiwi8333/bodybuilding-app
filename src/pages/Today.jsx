@@ -8,7 +8,7 @@ import { prescribe } from '../logic/progression.js'
 import { startWorkout, dateKey, setTrainAt } from '../logic/state.js'
 import { TARGET_SESSIONS_PER_WEEK, weeklyStreak, workoutsThisWeek } from '../logic/history.js'
 import { targetText } from '../lib/describe.js'
-import { FastingCard, FoodSummaryCard, HealthReportCard, MobilityCard, TodayAlerts } from '../components/TodayCards.jsx'
+import { FastMovedCard, FoodSummaryCard, HealthReportCard, MobilityCard, TodayAlerts } from '../components/TodayCards.jsx'
 import CountUp from '../components/CountUp.jsx'
 import ProgressRing from '../components/ProgressRing.jsx'
 
@@ -175,7 +175,7 @@ export default function Today() {
       </section>
 
       <FoodSummaryCard />
-      <FastingCard />
+      <FastMovedCard />
       <MobilityCard />
 
       <section className="card">

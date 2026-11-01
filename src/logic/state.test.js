@@ -19,6 +19,7 @@ import {
   parseBackup,
   serializeBackup,
   setTrainAt,
+  dismissFastMoved,
   updateGymGear,
   updateWeightGoal,
   setWeightFrom,
@@ -365,5 +366,17 @@ describe('weight goal and meals', () => {
     expect(s.nutrition.log['2026-10-21'][1]).toMatchObject({ carbs: null, fat: null, meal: null })
     expect(() => addFoodEntry(s, '2026-10-21', { name: 'X', kcal: 1, protein: 1, meal: 'brunch' })).toThrow(/meal/)
     expect(normalizeState(JSON.parse(JSON.stringify(s))).nutrition.log).toEqual(s.nutrition.log)
+  })
+})
+
+describe('fasting moved to Forge Fast', () => {
+  it('keeps fasting data in backups and remembers the card was dismissed', () => {
+    let s = dismissFastMoved(onboarded())
+    expect(s.fastMovedSeen).toBe(true)
+    expect(normalizeState(JSON.parse(serializeBackup(s)).data).fastMovedSeen).toBe(true)
+    const old = JSON.parse(JSON.stringify(onboarded()))
+    delete old.fastMovedSeen
+    expect(normalizeState(old).fastMovedSeen).toBe(false)
+    expect(JSON.parse(serializeBackup(s)).data.fasting).toEqual(s.fasting)
   })
 })

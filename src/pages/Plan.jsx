@@ -509,7 +509,7 @@ function RulesTab() {
             Food tab, set your goal weight and pace; it works out your calories, protein, carbs and fat, and adjusts them from your weigh-ins.
           </li>
           <li>
-            Fasting (Fast tab) can make a deficit easier by shortening the hours you eat. It is optional: total calories and protein matter most. Train in or near your
+            Fasting (in the separate Forge Fast app) can make a deficit easier by shortening the hours you eat. It is optional: total calories and protein matter most. Train in or near your
             eating window when you can.
           </li>
           <li>Sleep 7–9 hours. Drink water through the day, more on training days.</li>

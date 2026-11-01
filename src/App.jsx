@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect } from 'react'
 import { Link, Navigate, NavLink, Route, Routes, useLocation } from 'react-router-dom'
 import { useStore } from './store/StoreContext.jsx'
-import { FastIcon, FoodIcon, HealthIcon, PlanIcon, ProgressIcon, SettingsIcon, TodayIcon } from './components/icons.jsx'
+import { FoodIcon, HealthIcon, PlanIcon, ProgressIcon, SettingsIcon, TodayIcon } from './components/icons.jsx'
 import Onboarding from './pages/Onboarding.jsx'
 import Today from './pages/Today.jsx'
 import { SkeletonRows } from './components/EmptyState.jsx'
@@ -17,7 +17,7 @@ const Progress = lazy(() => import('./pages/Progress.jsx'))
 const Settings = lazy(() => import('./pages/Settings.jsx'))
 const Food = lazy(() => import('./pages/Food.jsx'))
 const Mobility = lazy(() => import('./pages/Mobility.jsx'))
-const Fasting = lazy(() => import('./pages/Fasting.jsx'))
+const FastMoved = lazy(() => import('./pages/FastMoved.jsx'))
 const Health = lazy(() => import('./pages/Health.jsx'))
 
 const pageFallback = (
@@ -31,7 +31,6 @@ const NAV = [
   { to: '/', label: 'Today', Icon: TodayIcon, end: true },
   { to: '/plan', label: 'Plan', Icon: PlanIcon },
   { to: '/food', label: 'Food', Icon: FoodIcon },
-  { to: '/fast', label: 'Fast', Icon: FastIcon },
   { to: '/progress', label: 'Progress', Icon: ProgressIcon },
   { to: '/health', label: 'Health', Icon: HealthIcon },
 ]
@@ -112,7 +111,7 @@ export default function App() {
               <Route path="/plan" element={<Plan />} />
               <Route path="/progress" element={<Progress />} />
               <Route path="/food" element={<Food />} />
-              <Route path="/fast" element={<Fasting />} />
+              <Route path="/fast" element={<FastMoved />} />
               <Route path="/health" element={<Health />} />
               <Route path="/mobility" element={<Mobility />} />
               <Route path="/settings" element={<Settings />} />

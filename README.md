@@ -3,7 +3,8 @@
 An installable phone app (PWA) for building muscle, losing fat and getting fitter: three
 ~60-minute full-body sessions a week, either **at home with adjustable dumbbells and a
 treadmill** or **in a full gym** (Gym A/B with barbells, machines and cables), plus calorie
-and macro tracking with food search and barcode scanning, and an intermittent fasting timer.
+and macro tracking with food search and barcode scanning. Intermittent fasting has its own
+app, [Forge Fast](https://kiwi8333.github.io/forge-fast/), which can import fasts from a Forge backup.
 
 **Open it:** https://kiwi8333.github.io/bodybuilding-app/
 On your phone, open the link, then choose **Add to Home Screen** (iPhone: Share → Add to
@@ -77,8 +78,8 @@ Home Screen; Android/Chrome: ⋮ → Install app). It works offline in the gym.
   snacks), food search and barcode scanning (Open Food Facts), a quick-add list, saved foods,
   a 7-day calorie chart with logging streak, and a weekly check-in that adjusts calories
   from your weigh-ins
-- **Fasting:** ring timer with 13:11 to 23:1, custom and open plans, the body's fasting
-  stages, editable start time, streaks, a 7-day chart, history and weight logging
+- **Fasting** moved to the separate Forge Fast app; Forge backups still carry earlier fasts
+  so they can be imported there
 - **Finish screen:** personal bests and progressions from the workout, with confetti
 - Swipe to delete (food, sets, weigh-ins, fasts) with Undo, and bottom-sheet confirmations
 - **Workout reminders:** push notifications on training days, a nudge after a missed session,
@@ -129,7 +130,7 @@ Structure:
 - `src/data/`: exercise tracks and levels, workouts, cardio stages, tempo, coaching
 - `src/demo/`: inverse-kinematics figure rig and per-exercise choreography (tests check that
   bones keep their length, nothing goes through the floor, and loops are seamless)
-- `src/logic/`: pure, unit-tested rules (progression, cardio, state, history, nutrition, fasting, heart, deload)
+- `src/logic/`: pure, unit-tested rules (progression, cardio, state, history, nutrition, heart, deload, and the fasting data kept for backups)
 - `src/food/`: Open Food Facts search and barcode lookup
 - `src/reminders/`: schedule rules, sealing (Web Crypto) and the phone-side push client
 - `api/`: Vercel functions for reminders; `scripts/send-reminders.mjs`: the scheduled sender

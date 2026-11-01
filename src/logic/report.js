@@ -6,7 +6,6 @@
 
 import { bestSet } from './history.js'
 import { dailyTargets, dayTotals } from './nutrition.js'
-import { fastHours, reachedGoal } from './fasting.js'
 import { BUILDER_STAGES } from '../data/cardio.js'
 import { TRACKS } from '../data/tracks.js'
 
@@ -319,21 +318,6 @@ function nutritionMarker(state, start, now) {
   })
 }
 
-function fastingMarker(state, start, now, weeks) {
-  const logs = state.fasting.logs.filter((l) => inWindow(l.endedAt, start, now))
-  if (!logs.length) return none('fasting', 'Fasting', 'Optional. Fasts you finish on the Fast tab show up here.')
-  const done = logs.filter(reachedGoal).length
-  const avg = logs.reduce((n, l) => n + fastHours(l), 0) / logs.length
-  return marker({
-    id: 'fasting',
-    title: 'Fasting',
-    value: `${r1(logs.length / weeks)} a week`,
-    status: done / logs.length >= 0.7 ? 'good' : 'ok',
-    detail: `${done} of ${logs.length} fasts reached their goal; average ${r1(avg)} h.`,
-    meaning: 'A shorter eating window can make a calorie deficit easier to keep. Its benefits for weight come mainly from eating less overall.',
-  })
-}
-
 // ---------- Report ----------
 
 export function buildReport(state, { periodId = '4w', now = new Date() } = {}) {
@@ -347,7 +331,7 @@ export function buildReport(state, { periodId = '4w', now = new Date() } = {}) {
       markers: [restingHrMarker(state, start, now), bloodPressureMarker(state, start, now), cardioFitnessMarker(state, start, now), activeMinutesMarker(state, start, now, weeks)],
     },
     { id: 'strength', title: 'Strength', markers: [strengthMarker(state, start, now), sessionsMarker(state, start, now, weeks)] },
-    { id: 'habits', title: 'Habits', markers: [nutritionMarker(state, start, now), fastingMarker(state, start, now, weeks)] },
+    { id: 'habits', title: 'Habits', markers: [nutritionMarker(state, start, now)] },
   ]
   const all = sections.flatMap((s) => s.markers)
   const counts = { good: 0, ok: 0, attention: 0, none: 0 }

@@ -66,7 +66,7 @@ export default function Onboarding() {
         <p className="text-2">
           Three full-body sessions a week, at home with dumbbells or in a full gym, each finished with a treadmill session that
           takes you from walking to running 20 minutes non-stop. The app tells you exactly what to lift and increases the
-          challenge automatically. Food tracking and fasting are built in.
+          challenge automatically. Food tracking is built in.
         </p>
       </div>
 

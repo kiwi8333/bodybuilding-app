@@ -4,14 +4,12 @@ import { WORKOUTS, nextWorkoutId } from '../data/program.js'
 import { DELOAD_WORKOUTS, WORKOUTS_BETWEEN_DELOADS, deloadDue, workoutsSinceDeload } from '../logic/deload.js'
 import { OUTGROWN_ALERT_THRESHOLD, outgrownDumbbells } from '../logic/history.js'
 import { dailyTargets, dayTotals } from '../logic/nutrition.js'
-import { beginDeload, dateKey, dismissDumbbellAlert, endDeloadEarly, postponeDeload } from '../logic/state.js'
+import { beginDeload, dateKey, dismissDumbbellAlert, dismissFastMoved, endDeloadEarly, postponeDeload } from '../logic/state.js'
 import { addDays, daysBetween } from '../reminders/schedule.js'
 import { MOBILITY_ROUTINE, mobilityTotalSeconds } from '../data/mobility.js'
 import { formatMinutes } from '../lib/format.js'
 import { useDialogs } from './Dialogs.jsx'
 import ProgressRing from './ProgressRing.jsx'
-import { useNow } from './useNow.js'
-import { formatDuration, hoursBetween, planHours, stageAt } from '../logic/fasting.js'
 import { buildReport } from '../logic/report.js'
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
@@ -157,34 +155,31 @@ export function FoodSummaryCard() {
   )
 }
 
-// Fasting at a glance: a running fast's progress, or the plan ready to start.
-export function FastingCard() {
-  const { state } = useStore()
+export const FORGE_FAST_URL = 'https://kiwi8333.github.io/forge-fast/'
+
+// Fasting now lives in the Forge Fast app. People who fasted here see this
+// until they dismiss it, with the steps to bring their fasts across.
+export function FastMovedCard() {
+  const { state, apply } = useStore()
   const f = state.fasting
-  const now = useNow(Boolean(f.active), 30000)
-  const elapsed = f.active ? hoursBetween(f.active.startedAt, now) : 0
-  const goal = f.active ? f.active.targetHours : planHours(f)
+  if (state.fastMovedSeen || (!f.active && f.logs.length === 0)) return null
   return (
     <section className="card">
-      <div className="row between">
-        <div className="row" style={{ gap: 12 }}>
-          <ProgressRing value={f.active ? (goal ? elapsed : elapsed % 24) : 0} max={goal ?? 24} size={48} stroke={5} color={f.active ? stageAt(elapsed).color : undefined} />
-          <div className="stack" style={{ gap: 2 }}>
-            <h2>{f.active ? `Fasting · ${formatDuration(elapsed)}` : 'Fasting'}</h2>
-            <span className="small text-2">
-              {f.active
-                ? goal
-                  ? elapsed >= goal
-                    ? `${goal}h goal reached · ${stageAt(elapsed).name}`
-                    : `${formatDuration(goal - elapsed)} to your ${goal}h goal · ${stageAt(elapsed).name}`
-                  : `Open fast · ${stageAt(elapsed).name}`
-                : `${goal ? `${goal}h` : 'Open'} plan ready`}
-            </span>
-          </div>
-        </div>
-        <Link className="btn small" to="/fast">
-          {f.active ? 'View' : 'Start'}
+      <h2>Fasting has moved to Forge Fast</h2>
+      <p className="small text-2">
+        {f.active ? 'Your running fast and your' : 'Your'} {f.logs.length} saved fast{f.logs.length === 1 ? '' : 's'} can come with you: tap <strong>Back up now</strong> in
+        Settings, then open Forge Fast and choose <strong>Import a Forge backup</strong>.
+      </p>
+      <div className="row wrap" style={{ gap: 8 }}>
+        <a className="btn small primary" href={FORGE_FAST_URL} target="_blank" rel="noreferrer noopener">
+          Open Forge Fast
+        </a>
+        <Link className="btn small" to="/settings">
+          Back up now
         </Link>
+        <button className="btn small ghost" onClick={() => apply(dismissFastMoved)}>
+          Got it
+        </button>
       </div>
     </section>
   )

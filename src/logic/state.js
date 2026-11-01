@@ -40,7 +40,10 @@ export function createInitialState() {
     lastBackupAt: null,
     // Where you train: picks Workout A/B (home) or Gym A/B.
     trainAt: 'home',
+    // Fasting moved to the Forge Fast app. The data stays so backups can carry
+    // it across; fastMovedSeen hides the "fasting has moved" card on Today.
     fasting: initialFasting(),
+    fastMovedSeen: false,
     // Resting heart rate and blood pressure readings, newest last.
     healthChecks: [],
     ui: { dumbbellAlertDismissedCount: 0 },
@@ -655,6 +658,10 @@ export function setTrainAt(state, location) {
 
 // ---------- Fasting ----------
 
+export function dismissFastMoved(state) {
+  return { ...state, fastMovedSeen: true }
+}
+
 export function setFastPlan(state, planId, customHours) {
   return { ...state, fasting: choosePlan(state.fasting, planId, customHours) }
 }
@@ -939,6 +946,7 @@ function checkV2Sections(raw, workoutCount) {
     lastBackupAt: raw.lastBackupAt,
     trainAt: raw.trainAt ?? 'home',
     fasting: normalizeFasting(raw.fasting, fail),
+    fastMovedSeen: raw.fastMovedSeen === true,
     healthChecks: checkHealthChecks(raw.healthChecks),
     ui: { dumbbellAlertDismissedCount: raw.ui.dumbbellAlertDismissedCount },
   }

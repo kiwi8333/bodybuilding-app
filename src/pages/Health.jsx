@@ -27,7 +27,6 @@ const TRACK_LINK = {
   strength: ['/', 'Train'],
   sessions: ['/', 'Train'],
   nutrition: ['/food', 'Log food'],
-  fasting: ['/fast', 'Open Fast'],
 }
 
 function Marker({ m }) {
